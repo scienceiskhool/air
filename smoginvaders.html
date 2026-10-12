@@ -276,6 +276,10 @@ canvas#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-
 .phud { grid-area: hud; display: flex; justify-content: space-between; gap: 12px; align-items: flex-end; font-family: var(--pixel); line-height: 1.6; }
 .phud small { display: block; color: var(--neon-teal); font-size: .5rem; }
 .phud b { font-weight: 400; color: var(--neon-yellow); font-size: .8rem; }
+.phud .hearts { margin-top: 2px; }
+.phud .hearts svg { width: 20px; height: 18px; }
+.pf .hurtflash { position: absolute; inset: 0; background: var(--neon-red); opacity: 0; pointer-events: none; z-index: 2; }
+.pf .hurtflash.on { animation: flash .4s steps(2); }
 .psi { flex: 1; max-width: 210px; text-align: right; }
 .psibar { height: 12px; border: 2px solid #fff; padding: 2px; margin: 3px 0 2px; background: var(--night); }
 .psibar i { display: block; height: 100%; width: 0; background: #4CF08A; transition: width .3s steps(6), background .3s; }
@@ -367,7 +371,7 @@ canvas#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-
         <div class="legend" id="start-legend"></div>
       </div>
       <div class="modes">
-        <div class="mode-card"><b>Mission</b><span>3 waves: sources, effects, then mixed. Keep the PSI below 300, then face the boss.</span></div>
+        <div class="mode-card"><b>Mission</b><span>3 waves: sources, effects, then mixed. 3 hearts: a wrong shot or a puff hit costs 1. Then face the boss.</span></div>
         <div class="mode-card dark"><b>BOSS FIGHT</b><span>3 hearts. Land 6 hits on the SMOG LORD. Includes how to reduce air pollution.</span></div>
       </div>
     </div>
@@ -407,6 +411,7 @@ canvas#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-
     <div class="phud">
       <div><small>SCORE</small><b id="p-score">0</b></div>
       <div><small>WAVE</small><b id="p-wave">1/3</b></div>
+      <div><small>HEARTS</small><div class="hearts" id="p-hearts"></div></div>
       <div class="psi"><small>AIR QUALITY (PSI)</small><div class="psibar"><i id="p-psi-bar"></i></div><b id="p-psi">40 GOOD</b></div>
     </div>
     <div class="clue" id="p-clue" aria-live="polite">
@@ -415,6 +420,7 @@ canvas#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-
     </div>
     <div class="pf" id="pf">
       <canvas id="cv" aria-label="Game area: tap a pollutant to shoot it"></canvas>
+      <div class="hurtflash" id="p-flash"></div>
       <div class="pf-over" id="pf-over" hidden>
         <h3 id="po-title">CITY CLEARED!</h3>
         <p id="po-msg"></p>
@@ -516,7 +522,9 @@ var WAVES = [
   { title: "MIXED ATTACK!", intro: "Wave 3 mixes <b>sources and effects</b>. Read carefully!", cats: ["source", "effect", "risk"], n: 8, speed: 19, drop: 2.6 }
 ];
 var PSI_START = 40;                   // air quality at the start
-var PSI_LOSE = 300;                   // game over ("hazardous") at this PSI
+var PSI_MAX = 300;                    // the PSI bar is full ("hazardous") at this value
+var INV_HEARTS = 3;                   // hearts for waves 1–3: hit by a puff or shooting the wrong invader = −1 heart
+var REFILL_EACH_WAVE = false;         // true = hearts refill to full at the start of each wave
 var PSI_LAND = { PM: 16, CO: 10, NO2: 10, SO2: 10 };  // PSI added when a puff reaches the city
 // Optional images in the same folder. If a file is missing, a built-in pixel sprite is used instead.
 var HERO_IMG = "hero.png";
@@ -873,8 +881,9 @@ function paintTut() {
     $("tut-body").innerHTML = "<h3>HOW TO PLAY</h3><ul>" +
       "<li>🎯 Read the <b>target</b> at the top, e.g. “comes from volcanoes”. The answer is always in the <b>front row</b>.</li>" +
       "<li>⌨️ Keyboard: <kbd>←</kbd> <kbd>→</kbd> move, <kbd>SPACE</kbd> shoot. 👆 Touch: tap the invader you want to hit.</li>" +
-      "<li>💥 Invaders drop puffs. <b>Dodge them</b> or shoot them. Puffs that land make the PSI (air quality) go up.</li>" +
-      "<li>🏆 Clear 3 waves while keeping the PSI below " + PSI_LOSE + ", then beat the <b>" + BOSS_NAME + "</b>.</li></ul>";
+      "<li>💥 Invaders drop puffs. <b>Dodge them</b> or shoot them. Puffs that land make the PSI (air quality) go up and pollute the city.</li>" +
+      "<li>❤️ You have <b>" + INV_HEARTS + " hearts</b>. Shooting the wrong invader or getting hit by a puff costs 1 heart.</li>" +
+      "<li>🏆 Clear 3 waves, then beat the <b>" + BOSS_NAME + "</b>.</li></ul>";
     return;
   }
   var p = P[st.t];
@@ -928,7 +937,7 @@ function startMission(student) {
     wave: -1, wavesCleared: 0, psi: PSI_START, haze: 0, anim: 0, running: true, paused: false, phase: "intro",
     ship: { x: WW / 2, tx: WW / 2, fire: false, slow: 0, cool: 0, stun: 0, hitT: 0 },
     shots: [], puffs: [], parts: [], drops: [], texts: [], enemies: [], structs: makeCity(), keys: {},
-    caption: null, seen: {}, fbT: 0, pendingInfo: null, recent: [], wrongPicks: []
+    caption: null, seen: {}, fbT: 0, pendingInfo: null, recent: [], wrongPicks: [], hearts: INV_HEARTS, wrongShots: 0, shipHits: 0
   };
   show("scr-play"); $("pf-over").hidden = true;
   Music.stop(); Music.use("game");
@@ -936,6 +945,17 @@ function startMission(student) {
   if (document.fonts && document.fonts.load) document.fonts.load("10px 'Press Start 2P'");
   nextWave();
   cancelAnimationFrame(raf2); lastT = performance.now(); raf2 = requestAnimationFrame(loop);
+}
+function paintHearts(breakIdx) {
+  var h = "";
+  for (var i = 0; i < INV_HEARTS; i++) h += '<span class="' + (i >= Inv.hearts ? "lost" : "") + (i === breakIdx ? " breaking" : "") + '">' + heartSVG() + "</span>";
+  $("p-hearts").innerHTML = h;
+}
+function loseHeart() {
+  var I = Inv; if (I.phase === "over" || I.hearts <= 0) return;
+  I.hearts--; paintHearts(I.hearts); retrigger($("p-flash"), "on"); Sound.hurt();
+  floatT("-1 ♥", I.ship.x, SHIP_Y - 26, "#FF4D5E");
+  if (I.hearts <= 0) { I.phase = "over"; setTimeout(loseMission, 900); }
 }
 function stopGame() { if (Inv) Inv.running = false; cancelAnimationFrame(raf2); }
 
@@ -951,6 +971,8 @@ function nextWave() {
   Inv.fx = (WW - ((cols - 1) * GAPX + EW)) / 2; Inv.fy = -130; Inv.dir = 1;
   Inv.wrongWave = 0; Inv.dropT = W.drop; Inv.phase = "intro"; Inv.introT = 2.6; Inv.clue = null; Inv.respUsed = false;
   Inv.puffs = []; Inv.shots = [];
+  if (REFILL_EACH_WAVE) Inv.hearts = INV_HEARTS;
+  paintHearts();
   $("p-wave").textContent = (Inv.wave + 1) + "/" + WAVES.length;
   setClue(null);
   fbSet("info", W.intro);
@@ -1061,13 +1083,13 @@ function update(dt) {
   }
   // puffs
   for (var i = I.puffs.length - 1; i >= 0; i--) {
-    var pf = I.puffs[i]; pf.y += pf.vy * dt; pf.ph += dt * 3; pf.x += Math.sin(pf.ph) * 12 * dt;
+    var pf = I.puffs[i]; if (!pf) continue; pf.y += pf.vy * dt; pf.ph += dt * 3; pf.x += Math.sin(pf.ph) * 12 * dt;
     if (Math.abs(pf.x - s.x) < 16 && Math.abs(pf.y - SHIP_Y) < 12) { I.puffs.splice(i, 1); puffEffect(pf, true); continue; }
     if (pf.y >= landY(pf.x)) { I.puffs.splice(i, 1); puffEffect(pf, false); }
   }
   // shots
   for (var j = I.shots.length - 1; j >= 0; j--) {
-    var sh = I.shots[j]; sh.y -= 480 * dt;
+    var sh = I.shots[j]; if (!sh) continue; sh.y -= 480 * dt;
     if (sh.y < -10) { I.shots.splice(j, 1); continue; }
     var hit = false;
     if (sh.target) {
@@ -1108,7 +1130,6 @@ function update(dt) {
   if (I.caption) { I.caption.life -= dt; if (I.caption.life <= 0) I.caption = null; }
   if (I.pendingInfo && performance.now() - I.fbT > 2500) { fbSet("info", I.pendingInfo); I.pendingInfo = null; }
   paintHud();
-  if (I.psi >= PSI_LOSE && I.phase !== "over") loseMission();
   if (I.phase === "play" && !I.enemies.some(function (e) { return e.alive; })) waveCleared();
 }
 
@@ -1126,15 +1147,18 @@ function nearestStruct(x, kinds) {
 function puffEffect(p, onShip) {
   var I = Inv, t = p.type;
   if (onShip) {
-    I.ship.stun = .7; I.ship.hitT = 1; I.shipHits = (I.shipHits || 0) + 1; G.points = Math.max(0, G.points - 20);
+    if (I.ship.hitT > 0 || I.phase === "over") { burst(p.x, p.y, P[t].col, 6); return; } // blinking = safe for a moment
+    I.ship.stun = .7; I.ship.hitT = 1.4; I.shipHits++;
     burst(I.ship.x, SHIP_Y, P[t].col, 12);
-    if (t !== "CO") { Sound.hurt(); floatT("HIT! -20", I.ship.x, SHIP_Y - 18, "#FF4D5E"); firstInfo("dodge", "💥 You got hit by a falling puff! Dodge them with <b>← →</b>, or shoot them before they land."); }
+    loseHeart();
+    if (t !== "CO") firstInfo("dodge", "💥 A puff hit you: <b>−1 heart</b>! Dodge them with <b>← →</b>, or shoot them before they land.");
+    if (I.phase === "over") return;
   }
   if (onShip && t === "CO") {
-    I.ship.slow = 3.2; I.psi += PSI_LAND.CO; Sound.hurt();
+    I.ship.slow = 3.2; I.psi += PSI_LAND.CO;
     caption("CO POISONING! LESS OXYGEN", P.CO.col);
     floatT("SLOWED!", I.ship.x, SHIP_Y - 18, P.CO.col);
-    firstInfo("COship", "☠️ <b>Carbon monoxide</b> hit you! It reduces the ability of blood to carry oxygen, so you slow down for a few seconds.");
+    firstInfo("COship", "☠️ <b>Carbon monoxide</b> hit you: <b>−1 heart</b>! It reduces the ability of blood to carry oxygen, so you slow down for a few seconds.");
     return;
   }
   I.psi += PSI_LAND[t]; Sound.land();
@@ -1172,7 +1196,7 @@ function hitEnemy(e, ep) {
     fbSet("ok", "✓ " + (first ? "" : "Got it! ") + c.why);
     if (I.enemies.some(function (x) { return x.alive; })) pickClue(); else { I.clue = null; }
   } else {
-    e.flash = .6; I.tries++; I.wrongWave++; I.psi += 5; Sound.bad();
+    e.flash = .6; I.tries++; I.wrongWave++; I.wrongShots++; I.psi += 5; Sound.bad(); loseHeart();
     if (I.wrongPicks.indexOf(e.type) < 0) I.wrongPicks.push(e.type);
     floatT("WRONG", cx, ep.y, "#FF4D5E");
     if (I.tries === 1) addErr(c.err);
@@ -1204,9 +1228,9 @@ function loseMission() {
   finish(true);
   show("scr-bend");
   $("scr-bend").className = "bend lose";
-  $("be-title").textContent = "HAZARDOUS!";
+  $("be-title").textContent = "GAME OVER";
   $("be-sprite").innerHTML = heroArt(true); $("be-sprite").className = "sprite" + (IMG_OK[HERO_HURT_IMG] ? "" : " down");
-  $("be-msg").textContent = "The PSI went above " + PSI_LOSE + ". Too much pollution reached the city. You cleared " + I.wavesCleared + " of " + WAVES.length + " waves. Try again!";
+  $("be-msg").textContent = "You ran out of hearts (" + I.wrongShots + " wrong " + (I.wrongShots === 1 ? "shot" : "shots") + ", hit by " + I.shipHits + (I.shipHits === 1 ? " puff" : " puffs") + "). You cleared " + I.wavesCleared + " of " + WAVES.length + " waves. Try again!";
   $("be-retry").hidden = false;
 }
 function psiLevel(v) {
@@ -1219,7 +1243,7 @@ function paintHud() {
   $("p-score").textContent = G.points;
   $("p-psi").textContent = v + " " + lv[0];
   $("p-psi").style.color = lv[1];
-  $("p-psi-bar").style.width = Math.min(100, v / PSI_LOSE * 100) + "%";
+  $("p-psi-bar").style.width = Math.min(100, v / PSI_MAX * 100) + "%";
   $("p-psi-bar").style.background = lv[1];
 }
 
@@ -1491,7 +1515,7 @@ function finish(silent) {
     var waves = Inv ? Inv.wavesCleared : 0;
     if (B && B.win) { title = "Clean air champion!"; sub = "All " + WAVES.length + " waves cleared and the " + BOSS_NAME + " defeated."; }
     else if (B) { title = "So close!"; sub = "All " + WAVES.length + " waves cleared, but the " + BOSS_NAME + " survived."; }
-    else { title = "The air turned hazardous"; sub = "You cleared " + waves + " of " + WAVES.length + " waves."; }
+    else { title = "Out of hearts!"; sub = "You cleared " + waves + " of " + WAVES.length + " waves."; }
     sub += " " + S.correct + " of " + S.total + " right on the first try.";
   } else {
     title = B.win ? BOSS_NAME + " defeated!" : BOSS_NAME + " survived";
@@ -1522,7 +1546,7 @@ function finish(silent) {
 function buildPayload(S) {
   var modeName = G.mode === "mission" ? "Mission" : "Boss fight";
   var status = G.mode === "mission"
-    ? "Waves cleared: " + (Inv ? Inv.wavesCleared : 0) + "/" + WAVES.length + " | Final PSI: " + (Inv ? Math.round(Inv.psi) : "-") + " | Boss: " + (B ? (B.win ? "won" : "lost") : "not reached")
+    ? "Waves cleared: " + (Inv ? Inv.wavesCleared : 0) + "/" + WAVES.length + " | Hearts left: " + (Inv ? Inv.hearts : "-") + "/" + INV_HEARTS + " | Wrong shots: " + (Inv ? Inv.wrongShots : 0) + " | Hit by puffs: " + (Inv ? Inv.shipHits : 0) + " | Final PSI: " + (Inv ? Math.round(Inv.psi) : "-") + " | Boss: " + (B ? (B.win ? "won" : "lost") : "not reached")
     : "Boss: " + (B.win ? "won" : "lost") + " | Best combo: " + B.bestCombo;
   var bars = S.bars.map(function (b) { return b[0] + " " + b[1] + "/" + b[2]; }).join(", ");
   var errs = S.errs.length ? S.errs.map(function (k) { return ERR[k].label + " x" + G.err[k]; }).join("; ") : "none";
