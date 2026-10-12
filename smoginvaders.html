@@ -1,0 +1,1582 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Smog Invaders</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+/* Layout: Arcade Punch (light, brand colours) for training and results; dark neon arcade for the boss fight. */
+:root {
+  --orange: #FF8243; --pink: #FFC0CB; --yellow: #FCE883; --teal: #069494; --teal-ink: #057A7A;
+  --orange-tint: #FFE6DA; --pink-tint: #FFEEF1; --yellow-tint: #FEF8D9; --teal-tint: #DDF2F2;
+  --ink: #1F2A2E; --muted: #56656A; --line: #E4E8E9; --bg: #FFFFFF;
+  --good: #1E9E62; --good-tint: #D8F3E4; --bad: #E2463A;
+  --b: 3px solid var(--ink);
+  --font: "Open Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --pixel: "Press Start 2P", ui-monospace, "Courier New", monospace;
+  /* boss arena */
+  --night: #0D0B1A; --night-2: #19152E; --night-3: #2A2448;
+  --neon-teal: #2EF2E0; --neon-pink: #FF7FB0; --neon-yellow: #FCE883; --neon-orange: #FF8243; --neon-red: #FF4D5E;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); }
+body {
+  font: 16px/1.5 var(--font); min-height: 100vh; min-height: 100dvh;
+  display: flex; flex-direction: column;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  transition: background .3s;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+[hidden] { display: none !important; }
+.sub { font-size: .68em; position: relative; bottom: -.25em; line-height: 0; }
+sup { font-size: .68em; line-height: 0; position: relative; top: -.1em; vertical-align: super; font-weight: 800; }
+:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+
+/* ---------- shared pieces ---------- */
+.wrap { width: 100%; max-width: 1040px; margin: 0 auto; padding: 16px; flex: 1; display: flex; flex-direction: column; }
+.card { background: #fff; border: var(--b); border-radius: 22px; box-shadow: 6px 6px 0 var(--ink); }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: var(--b); border-radius: 16px; padding: 14px 18px; font-weight: 800; font-size: 1.1rem;
+  background: var(--orange); color: var(--ink); box-shadow: 0 5px 0 var(--ink);
+  transition: transform .08s, box-shadow .08s; user-select: none; -webkit-user-select: none;
+}
+.btn:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.big { width: 100%; font-size: 1.15rem; text-transform: uppercase; letter-spacing: .03em; padding: 16px; }
+.btn.alt { background: #fff; }
+.btn.teal { background: var(--teal); color: #fff; }
+.btn.yellow { background: var(--yellow); }
+.btn.sm { padding: 9px 14px; font-size: .95rem; border-radius: 12px; box-shadow: 0 3px 0 var(--ink); }
+.pill { display: inline-block; font-size: .72rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; border: 2px solid var(--ink); border-radius: 99px; padding: 2px 10px; background: #fff; }
+.icon-btn { width: 42px; height: 42px; border-radius: 12px; border: var(--b); background: #fff; display: grid; place-items: center; box-shadow: 0 3px 0 var(--ink); padding: 0; flex: none; }
+.icon-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.icon-btn svg { width: 20px; height: 20px; }
+.icon-btn.off { opacity: .45; }
+
+/* ---------- top bar ---------- */
+.topbar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 2px solid var(--line); background: #fff; }
+.topbar .brand { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; text-decoration: none; color: var(--ink); }
+.topbar .brand img { width: 38px; height: 38px; border-radius: 50%; border: 2.5px solid var(--ink); background: var(--yellow); object-fit: cover; flex: none; }
+.topbar .brand b { font-weight: 800; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.topbar .brand small { display: block; font-size: .72rem; color: var(--muted); font-weight: 600; line-height: 1.2; }
+
+/* ---------- start screen ---------- */
+.start { display: grid; gap: 22px; grid-template-columns: 1fr; align-items: start; margin: auto 0; padding-block: 8px 20px; }
+.hero { background: var(--teal); color: #fff; padding: 22px; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 14px; }
+.hero h1 { margin: 6px 0 0; font-size: clamp(2rem, 7vw, 3rem); line-height: 1.05; font-weight: 800; letter-spacing: -.01em; text-wrap: balance; }
+.hero h1 em { font-style: normal; background: var(--yellow); color: var(--ink); border: var(--b); border-radius: 14px; padding: 0 10px; display: inline-block; transform: rotate(-2deg); }
+.hero p { margin: 0; max-width: 40ch; font-weight: 600; }
+.hero .pill { color: var(--ink); align-self: flex-start; }
+.demo { background: #fff; color: var(--ink); border: var(--b); border-radius: 16px; padding: 12px 14px; font-weight: 700; display: flex; flex-direction: column; gap: 6px; font-size: .95rem; }
+.demo .row1 { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+.demo s { color: var(--muted); text-decoration-thickness: 2px; text-decoration-color: var(--bad); }
+.demo .net { background: var(--yellow); border: 2px solid var(--ink); border-radius: 10px; padding: 2px 8px; align-self: flex-start; }
+.demo small { font-size: .7rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--teal-ink); }
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mode-card { padding: 12px; border: var(--b); border-radius: 16px; background: var(--yellow-tint); color: var(--ink); }
+.mode-card.dark { background: var(--night); color: #fff; }
+.mode-card b { display: block; font-weight: 800; }
+.mode-card.dark b { font-family: var(--pixel); font-size: .72rem; color: var(--neon-yellow); line-height: 1.6; }
+.mode-card span { font-size: .85rem; display: block; line-height: 1.4; margin-top: 4px; }
+.form { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.form h2 { margin: 0; font-size: 1.25rem; font-weight: 800; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fields .full { grid-column: 1 / -1; }
+label.f { display: flex; flex-direction: column; gap: 4px; font-weight: 700; font-size: .9rem; }
+label.f input, label.f select { font-size: 16px; padding: 12px; border: 2.5px solid var(--ink); border-radius: 12px; background: #fff; width: 100%; min-width: 0; }
+label.f input:focus, label.f select:focus { outline: 3px solid var(--yellow); outline-offset: 1px; }
+.grp { display: flex; flex-direction: column; gap: 6px; }
+.grp > span { font-weight: 700; font-size: .9rem; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 2.5px solid var(--ink); border-radius: 12px; background: #fff; padding: 8px 12px; font-weight: 700; font-size: .9rem; box-shadow: 0 3px 0 var(--ink); }
+.chip[aria-pressed="true"] { background: var(--yellow); }
+.seg .chip { text-align: center; }
+.seg .chip small { display: block; font-weight: 600; font-size: .75rem; color: var(--muted); }
+.form-err { color: var(--bad); font-weight: 700; font-size: .9rem; min-height: 1.2em; margin: -4px 0 0; }
+.go-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn.boss-btn { background: var(--night); color: var(--neon-yellow); font-family: var(--pixel); font-size: .78rem; line-height: 1.5; }
+.best { display: flex; justify-content: space-between; font-size: .9rem; color: var(--muted); font-weight: 700; }
+.best b { color: var(--ink); }
+@media (min-width: 760px) { .start { grid-template-columns: 1.05fr 1fr; gap: 28px; } }
+@media (max-width: 420px) { .modes, .go-row { grid-template-columns: 1fr; } }
+/* ---------- boss fight (dark arcade) ---------- */
+body.dark { background: var(--night); }
+body.dark .topbar { background: var(--night); border-bottom-color: var(--night-3); }
+body.dark .topbar .brand, body.dark .topbar .brand small { color: #fff; }
+body.dark .icon-btn { background: var(--night-2); border-color: var(--neon-teal); color: var(--neon-teal); box-shadow: 0 3px 0 var(--neon-teal); }
+body.dark footer { color: #8C86A8; }
+body.dark footer a { color: var(--neon-teal); }
+.boss { display: flex; flex-direction: column; gap: 14px; color: #fff; margin-block: 4px 16px; position: relative; }
+.arena { border: 3px solid var(--neon-teal); border-radius: 6px; background: var(--night-2); box-shadow: 0 0 0 3px var(--night), 0 0 22px rgba(46,242,224,.35); overflow: hidden; position: relative; }
+.arena::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 2px, transparent 2px 4px); }
+.bhud { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 12px 12px 0; font-family: var(--pixel); font-size: .62rem; line-height: 1.6; position: relative; z-index: 2; }
+.hp-who { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.hp-who.boss-side { align-items: flex-end; text-align: right; flex: 1; }
+.hearts { display: flex; gap: 4px; }
+.hearts svg { width: 22px; height: 20px; }
+.hearts .lost { opacity: .22; }
+.hearts .breaking { animation: heartbreak .6s; }
+@keyframes heartbreak { 0% { transform: scale(1); } 40% { transform: scale(1.5) rotate(-12deg); } 100% { transform: scale(1); } }
+.hpbar { width: min(220px, 100%); height: 16px; border: 3px solid #fff; background: var(--night); padding: 2px; }
+.hpbar i { display: block; height: 100%; background: var(--neon-pink); width: 100%; transition: width .45s steps(8); }
+.hpbar i.low { background: var(--neon-red); }
+.bname { color: var(--neon-pink); }
+.hname { color: var(--neon-teal); }
+.stage { position: relative; height: 210px; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 6% 18px; }
+.stage::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 46px; background:
+  linear-gradient(transparent 0 0), repeating-linear-gradient(90deg, rgba(46,242,224,.35) 0 2px, transparent 2px 40px), linear-gradient(var(--night-3), var(--night)); border-top: 2px solid var(--neon-teal); }
+.stars { position: absolute; inset: 0; background-image: radial-gradient(1.5px 1.5px at 12% 20%, #fff 50%, transparent 51%), radial-gradient(1.5px 1.5px at 38% 12%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 62% 28%, #fff 50%, transparent 51%), radial-gradient(1.5px 1.5px at 84% 10%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 92% 34%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 24% 40%, #fff 50%, transparent 51%); opacity: .7; }
+.sprite { position: relative; z-index: 1; image-rendering: pixelated; }
+.sprite svg, .sprite img { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+.hero-sp.pic { width: 100px; height: 118px; }
+.mon-sp.pic { width: 168px; height: 150px; }
+.sprite.pic img { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; image-rendering: auto; }
+.hero-sp { width: 86px; animation: bob 1s steps(2) infinite; }
+.mon-sp { width: 150px; animation: bob 1.4s steps(2) infinite; }
+@keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.hero-sp.atk { animation: lunge-r .45s steps(4); }
+.mon-sp.atk { animation: lunge-l .5s steps(4); }
+@keyframes lunge-r { 50% { transform: translateX(40px); } }
+@keyframes lunge-l { 50% { transform: translateX(-60px) scale(1.08); } }
+.sprite.hit { animation: hit .5s steps(2); }
+@keyframes hit { 0%,50% { filter: brightness(3) saturate(0); transform: translateX(6px); } 25%,75% { filter: none; transform: translateX(-6px); } 100% { filter: none; transform: none; } }
+.sprite.dead { animation: none; opacity: .25; filter: grayscale(1); transform: translateY(16px) rotate(8deg); transition: all .8s steps(6); }
+.orbit { position: absolute; font-family: var(--pixel); font-size: .7rem; color: var(--neon-yellow); animation: float 2.2s steps(4) infinite; }
+@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+.bolt { position: absolute; left: 22%; bottom: 70px; width: 26px; height: 26px; z-index: 3; opacity: 0; }
+.bolt.fly { animation: fly .45s steps(6) forwards; }
+@keyframes fly { 0% { opacity: 1; left: 22%; transform: rotate(0); } 90% { opacity: 1; } 100% { opacity: 0; left: 66%; transform: rotate(360deg); } }
+.dmg { position: absolute; z-index: 4; font-family: var(--pixel); font-size: .9rem; color: var(--neon-yellow); text-shadow: 2px 2px 0 var(--night); animation: rise 1s steps(8) forwards; pointer-events: none; }
+.dmg.hurt { color: var(--neon-red); }
+@keyframes rise { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }
+.flash { position: absolute; inset: 0; background: var(--neon-red); opacity: 0; pointer-events: none; z-index: 5; }
+.flash.on { animation: flash .4s steps(2); }
+@keyframes flash { 0%,50% { opacity: .35; } 100% { opacity: 0; } }
+.charge { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-top: 3px solid var(--neon-teal); font-family: var(--pixel); font-size: .55rem; line-height: 1.5; color: var(--neon-pink); position: relative; z-index: 2; background: var(--night); }
+.charge .cbar { flex: 1; height: 14px; border: 2px solid var(--neon-pink); padding: 2px; min-width: 60px; }
+.charge .cbar i { display: block; height: 100%; width: 0; background: var(--neon-pink); }
+.charge.warn .cbar i { background: var(--neon-red); }
+.charge b { color: #fff; min-width: 2.5em; text-align: right; font-weight: 400; }
+.phase { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); font-family: var(--pixel); color: var(--neon-red); font-size: 1rem; text-shadow: 3px 3px 0 var(--night); z-index: 6; white-space: nowrap; animation: blink .5s steps(1) 4; }
+@keyframes blink { 50% { opacity: 0; } }
+
+.qbox { border: 3px solid #fff; border-radius: 6px; background: var(--night); padding: 14px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 0 0 3px var(--night-3); }
+.qtype { margin: 0; font-family: var(--pixel); font-size: .6rem; color: var(--neon-yellow); line-height: 1.6; }
+.qtext { margin: 0; font-weight: 700; font-size: 1.02rem; }
+.qeq { background: var(--night-2); border: 2px dashed var(--night-3); border-radius: 6px; padding: 10px; font-weight: 700; font-size: 1.02rem; line-height: 1.7; }
+.qopts { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.qopt { display: flex; gap: 10px; align-items: center; text-align: left; border: 3px solid var(--neon-teal); background: var(--night-2); color: #fff; border-radius: 6px; padding: 10px 12px; font-weight: 700; font-size: 1rem; box-shadow: 0 4px 0 var(--neon-teal); line-height: 1.6; transition: transform .08s, box-shadow .08s; }
+.qopt:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--neon-teal); }
+.qopt .k { flex: none; width: 30px; height: 30px; display: grid; place-items: center; font-family: var(--pixel); font-size: .7rem; background: var(--neon-teal); color: var(--night); }
+.qopt .tx { min-width: 0; }
+.qopt.right { border-color: #4CF08A; box-shadow: 0 4px 0 #4CF08A; background: #12351F; }
+.qopt.right .k { background: #4CF08A; }
+.qopt.wrong { border-color: var(--neon-red); box-shadow: 0 4px 0 var(--neon-red); background: #3A1420; }
+.qopt.wrong .k { background: var(--neon-red); }
+.qopt:disabled { cursor: default; }
+.qopt:disabled:not(.right):not(.wrong) { opacity: .55; }
+.tm { white-space: nowrap; }
+.qbox .st, .final .st { opacity: .75; font-weight: 600; font-size: .85em; }
+.qfb { border: 3px solid var(--neon-yellow); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 10px; background: var(--night-2); }
+.qfb.no { border-color: var(--neon-red); }
+.qfb p { margin: 0; font-weight: 600; }
+.qfb .ans { color: #4CF08A; font-weight: 800; }
+.pbtn { font-family: var(--pixel); font-size: .72rem; line-height: 1.5; border: 3px solid var(--night); background: var(--neon-yellow); color: var(--night); padding: 14px 16px; box-shadow: 0 4px 0 var(--neon-orange); border-radius: 4px; }
+.pbtn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--neon-orange); }
+.pbtn.ghost { background: transparent; color: var(--neon-teal); border-color: var(--neon-teal); box-shadow: 0 4px 0 var(--neon-teal); }
+@media (min-width: 760px) {
+  .qopts { grid-template-columns: 1fr 1fr; }
+  .stage { height: 250px; }
+  .hero-sp { width: 110px; }
+  .mon-sp { width: 200px; }
+  .hero-sp.pic { width: 130px; height: 152px; }
+  .mon-sp.pic { width: 230px; height: 200px; }
+  .bhud { font-size: .72rem; }
+}
+
+.bend { margin: auto; text-align: center; display: flex; flex-direction: column; gap: 18px; align-items: center; color: #fff; padding: 24px 8px; }
+.bend h2 { font-family: var(--pixel); font-size: clamp(1.4rem, 7vw, 2.4rem); margin: 0; line-height: 1.3; color: var(--neon-yellow); text-shadow: 4px 4px 0 var(--neon-orange); }
+.bend.lose h2 { color: var(--neon-red); text-shadow: 4px 4px 0 var(--night-3); }
+.bend p { margin: 0; font-weight: 600; max-width: 36ch; }
+.bend .sprite { width: 120px; }
+.bend .row { justify-content: center; }
+.bend .sprite.down { opacity: .35; filter: grayscale(1); transform: rotate(-90deg); }
+.bend-btns { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.hits-left { color: #fff; }
+.start-blink { font-family: var(--pixel); font-size: .6rem; color: var(--neon-teal); animation: blink 1s steps(1) infinite; }
+
+/* ---------- results ---------- */
+.results { display: grid; gap: 18px; grid-template-columns: 1fr; padding-block: 8px 20px; }
+.res-hero { background: var(--teal); color: #fff; padding: 22px; display: flex; gap: 18px; align-items: center; }
+.big-ring { --p: 0; width: 120px; height: 120px; flex: none; border-radius: 50%; border: var(--b); background: conic-gradient(var(--yellow) calc(var(--p) * 1%), #fff 0); display: grid; place-items: center; }
+.big-ring span { width: 88px; height: 88px; border-radius: 50%; background: #fff; color: var(--ink); border: var(--b); display: grid; place-items: center; font-weight: 800; font-size: 1.7rem; }
+.res-hero h2 { margin: 0 0 4px; font-size: 1.6rem; line-height: 1.15; font-weight: 800; text-wrap: balance; }
+.res-hero p { margin: 0; font-weight: 600; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.stat { border: var(--b); border-radius: 14px; padding: 8px 10px; background: #fff; box-shadow: 0 4px 0 var(--ink); }
+.stat span { display: block; font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.stat b { font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.stat:nth-child(1) { background: var(--yellow-tint); } .stat:nth-child(2) { background: var(--pink-tint); } .stat:nth-child(3) { background: var(--teal-tint); } .stat:nth-child(4) { background: var(--orange-tint); }
+.panel { padding: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.panel h3 { margin: 0; font-size: 1.15rem; font-weight: 800; }
+.bars { display: flex; flex-direction: column; gap: 8px; }
+.bar-row { display: grid; grid-template-columns: 10.5em 1fr 3.2em; gap: 10px; align-items: center; font-weight: 700; font-size: .92rem; }
+.bar { height: 14px; border: 2px solid var(--ink); border-radius: 99px; overflow: hidden; background: #fff; }
+.bar i { display: block; height: 100%; background: var(--teal); }
+.bar i.low { background: var(--orange); }
+.bar-row .n { text-align: right; font-variant-numeric: tabular-nums; }
+.weak { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.weak li { border: 2.5px solid var(--ink); border-radius: 14px; padding: 10px 12px; background: var(--orange-tint); }
+.weak li b { display: block; }
+.weak li span { font-size: .9rem; }
+.weak li.good { background: var(--good-tint); }
+.review { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.review li { border-bottom: 2px solid var(--line); padding: 6px 0 8px; font-size: .95rem; }
+.review li:last-child { border-bottom: 0; }
+.review .you { color: var(--bad); font-weight: 700; }
+.review .key { color: var(--good); font-weight: 800; }
+.review .st { color: var(--muted); font-size: .85em; }
+.send { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-weight: 700; padding: 12px 14px; border: 2.5px solid var(--ink); border-radius: 14px; background: var(--teal-tint); }
+.send.err { background: var(--orange-tint); }
+.res-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.res-actions .btn { flex: 1 1 200px; }
+@media (min-width: 760px) {
+  .results { grid-template-columns: 1fr 1fr; align-items: start; }
+  .results .span { grid-column: 1 / -1; }
+}
+@media (max-width: 480px) {
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .res-hero { flex-direction: column; text-align: center; }
+  .bar-row { grid-template-columns: 8.6em 1fr 3em; font-size: .85rem; }
+}
+
+footer { text-align: center; color: var(--muted); font-size: .82rem; padding: 14px 16px 20px; }
+footer a { color: var(--teal-ink); font-weight: 700; }
+canvas#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+/* ---------- invaders (dark arcade) ---------- */
+.legend { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.lg-chip { display: flex; align-items: center; gap: 8px; font-size: .85rem; font-weight: 700; line-height: 1.25; min-width: 0; }
+.lg-chip img { width: 42px; height: 30px; image-rendering: pixelated; flex: none; }
+.lg-chip b { display: block; font-family: var(--pixel); font-size: .6rem; font-weight: 400; line-height: 1.6; }
+.play { display: grid; gap: 10px; color: #fff; margin-block: 0 12px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "hud" "clue" "pf" "fb" "legend" "howto"; }
+.phud { grid-area: hud; display: flex; justify-content: space-between; gap: 12px; align-items: flex-end; font-family: var(--pixel); line-height: 1.6; }
+.phud small { display: block; color: var(--neon-teal); font-size: .5rem; }
+.phud b { font-weight: 400; color: var(--neon-yellow); font-size: .8rem; }
+.psi { flex: 1; max-width: 210px; text-align: right; }
+.psibar { height: 12px; border: 2px solid #fff; padding: 2px; margin: 3px 0 2px; background: var(--night); }
+.psibar i { display: block; height: 100%; width: 0; background: #4CF08A; transition: width .3s steps(6), background .3s; }
+.clue { grid-area: clue; border: 3px solid var(--neon-yellow); background: var(--night); border-radius: 6px; padding: 10px 14px; display: flex; gap: 12px; align-items: center; min-height: 96px; }
+.clue .ic { font-size: 2.3rem; line-height: 1; flex: none; width: 1.3em; text-align: center; }
+.clue small { font-family: var(--pixel); font-size: .55rem; color: var(--neon-yellow); display: block; line-height: 1.6; margin-bottom: 4px; }
+.clue p { margin: 0; font-weight: 700; font-size: 1.1rem; line-height: 1.35; }
+.clue p b { color: var(--neon-teal); font-weight: 800; }
+.clue .multi { display: inline-block; margin-top: 6px; font-family: var(--pixel); font-size: .5rem; color: var(--night); background: var(--neon-pink); padding: 4px 6px; line-height: 1.5; }
+.clue.pop { animation: cluepop .45s steps(3); }
+@keyframes cluepop { 0% { transform: scale(.96); border-color: #fff; } 100% { transform: none; } }
+.pf { grid-area: pf; position: relative; justify-self: center; width: min(100%, 560px, calc((100dvh - 250px) * .75)); min-width: min(100%, 270px); aspect-ratio: 3 / 4; border: 3px solid var(--neon-teal); border-radius: 6px; background: var(--night-2); box-shadow: 0 0 0 3px var(--night), 0 0 22px rgba(46,242,224,.35); overflow: hidden; }
+.pf canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; -webkit-user-select: none; user-select: none; }
+.pf::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 2px, transparent 2px 4px); z-index: 2; }
+.pf-over { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; padding: 20px; background: rgba(13,11,26,.84); z-index: 3; }
+.pf-over h3 { font-family: var(--pixel); color: var(--neon-yellow); margin: 0; font-size: 1rem; line-height: 1.6; text-shadow: 3px 3px 0 var(--neon-orange); }
+.pf-over p { margin: 0; font-weight: 600; max-width: 30ch; }
+.pfb { grid-area: fb; border: 3px solid var(--neon-teal); border-radius: 6px; background: var(--night-2); padding: 10px 12px; font-weight: 600; min-height: 3.7em; line-height: 1.45; }
+.pfb.ok { border-color: #4CF08A; }
+.pfb.no { border-color: var(--neon-red); }
+.pfb.info { border-color: var(--neon-yellow); }
+.pfb b { color: var(--neon-yellow); }
+.plegend { grid-area: legend; }
+.plegend .lg-chip { border: 2px solid var(--night-3); border-radius: 6px; padding: 6px 8px; background: var(--night); }
+.howto { grid-area: howto; margin: 0; font-size: .82rem; color: #A9A3C6; }
+/* ---------- tutorial ---------- */
+.btn.tut-btn { width: 100%; background: var(--yellow); font-size: 1rem; }
+.tut { color: #fff; display: flex; flex-direction: column; gap: 14px; max-width: 640px; width: 100%; margin: 0 auto; padding-block: 4px 16px; }
+.tut-top { display: flex; justify-content: space-between; align-items: center; font-family: var(--pixel); font-size: .6rem; color: var(--neon-teal); line-height: 1.6; }
+.tut-dots { display: flex; gap: 6px; }
+.tut-dots i { width: 12px; height: 12px; border: 2px solid var(--neon-teal); display: block; }
+.tut-dots i.on { background: var(--neon-yellow); border-color: var(--neon-yellow); }
+.tut-card { border: 3px solid var(--neon-teal); border-radius: 6px; background: var(--night-2); box-shadow: 0 0 0 3px var(--night), 0 0 22px rgba(46,242,224,.3); overflow: hidden; }
+.tut-scene { position: relative; display: flex; justify-content: space-around; align-items: flex-end; gap: 10px; height: 210px; padding: 0 12px 10px; background: linear-gradient(#0D0B1A, #19152E 70%, #2A2448); border-bottom: 3px solid var(--neon-teal); }
+.src { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; max-width: 200px; text-align: center; }
+.src .em { font-size: 3.4rem; line-height: 1; filter: drop-shadow(0 4px 0 rgba(0,0,0,.4)); }
+.src .lbl { font-weight: 800; font-size: .85rem; line-height: 1.25; color: var(--neon-yellow); min-height: 2.5em; }
+.src .inv { position: absolute; left: 50%; bottom: 96px; width: 63px; height: 45px; margin-left: -31px; image-rendering: pixelated; animation: emerge 2.6s steps(13) infinite; }
+.src .smoke { position: absolute; left: 50%; bottom: 84px; width: 10px; height: 10px; margin-left: -5px; opacity: .7; animation: smoke 2.6s steps(10) infinite; }
+.src:nth-child(2) .inv, .src:nth-child(2) .smoke { animation-delay: 1.3s; }
+@keyframes emerge { 0% { transform: translateY(70px) scale(.3); opacity: 0; } 25% { opacity: 1; } 70% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-6px) scale(1); opacity: 1; } }
+@keyframes smoke { 0% { transform: translateY(0) scale(.6); opacity: .8; } 100% { transform: translateY(-80px) scale(2.4); opacity: 0; } }
+.tut-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.tut-body h3 { margin: 0; font-family: var(--pixel); font-size: .85rem; line-height: 1.6; color: var(--neon-yellow); }
+.tut-body h3 .sub { font-size: .7em; }
+.tut-body p { margin: 0; font-weight: 600; line-height: 1.45; }
+.tut-body p b { color: var(--neon-teal); }
+.tut-body .game { border: 2px dashed var(--neon-pink); border-radius: 6px; padding: 8px 10px; color: #fff; }
+.tut-body .game b { color: var(--neon-pink); }
+.tut-body ul { margin: 0; padding-left: 1.2em; font-weight: 600; line-height: 1.5; display: flex; flex-direction: column; gap: 6px; }
+.tut-body kbd { font-family: var(--pixel); font-size: .6rem; border: 2px solid #fff; border-radius: 4px; padding: 2px 6px; background: var(--night); }
+.tut-nav { display: flex; justify-content: space-between; gap: 12px; }
+@media (min-width: 900px) {
+  .play { grid-template-columns: auto minmax(260px, 1fr); grid-template-areas: "pf hud" "pf clue" "pf fb" "pf legend" "pf howto"; grid-template-rows: auto auto auto auto 1fr; column-gap: 18px; align-items: start; }
+  .pf { width: min(540px, calc((100dvh - 150px) * .75)); }
+}
+</style>
+</head>
+<body>
+
+<audio id="music" loop preload="none"></audio>
+
+<header class="topbar">
+  <a class="brand" href="https://scienceiskhool.github.io/scienceiskhool/" target="_blank" rel="noopener">
+    <img src="https://scienceiskhool.github.io/scienceiskhool/assets/img/head.png" alt="" onerror="this.style.visibility='hidden'">
+    <span><b>Smog Invaders</b><small>Science is Khool · Air pollutants</small></span>
+  </a>
+  <button class="icon-btn" id="btn-quit" type="button" aria-label="Back to start" title="Back to start" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/></svg>
+  </button>
+  <button class="icon-btn" id="btn-music" type="button" aria-label="Music on" title="Music">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+  </button>
+  <button class="icon-btn" id="btn-sound" type="button" aria-label="Sound effects on" title="Sound effects">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
+  </button>
+</header>
+
+<main class="wrap">
+
+  <!-- START -->
+  <section id="scr-start" class="start">
+    <div class="card hero">
+      <span class="pill">Sec 1 G1 Science · Air</span>
+      <h1>Smog <em>Invaders</em></h1>
+      <p>Air pollutants are invading the city! Read each target, then shoot the pollutant that matches it.</p>
+      <div class="demo">
+        <small>Know your invaders</small>
+        <div class="legend" id="start-legend"></div>
+      </div>
+      <div class="modes">
+        <div class="mode-card"><b>Mission</b><span>3 waves: sources, effects, then mixed. Keep the PSI below 300, then face the boss.</span></div>
+        <div class="mode-card dark"><b>BOSS FIGHT</b><span>3 hearts. Land 6 hits on the SMOG LORD. Includes how to reduce air pollution.</span></div>
+      </div>
+    </div>
+
+    <form class="card form" id="form-start" novalidate>
+      <h2>Ready, player?</h2>
+      <div class="fields">
+        <label class="f full" for="in-name">Name<input id="in-name" name="name" maxlength="60" autocomplete="name" required></label>
+        <label class="f" for="in-cls">Class<select id="in-cls" name="cls" required><option value="">Choose…</option></select></label>
+        <label class="f" for="in-reg">Register no.<input id="in-reg" name="reg" inputmode="numeric" pattern="[0-9]*" maxlength="2" required></label>
+      </div>
+      <p class="form-err" id="form-err" role="alert"></p>
+      <div class="go-row">
+        <button class="btn big" type="button" id="btn-play">Start mission ▶</button>
+        <button class="btn big boss-btn" type="button" id="btn-boss">Boss fight</button>
+      </div>
+      <button class="btn tut-btn" type="button" id="btn-tut">New here? Quick tutorial (1 min)</button>
+      <div class="best"><span>Your best on this device</span><b id="txt-best">–</b></div>
+    </form>
+  </section>
+
+  <!-- TUTORIAL -->
+  <section id="scr-tut" class="tut" hidden>
+    <div class="tut-top"><span id="tut-step">MEET THE INVADERS 1/5</span><div class="tut-dots" id="tut-dots"></div></div>
+    <div class="tut-card">
+      <div class="tut-scene" id="tut-scene"></div>
+      <div class="tut-body" id="tut-body"></div>
+    </div>
+    <div class="tut-nav">
+      <button class="pbtn ghost" type="button" id="tut-back">◀ BACK</button>
+      <button class="pbtn" type="button" id="tut-next">NEXT ▶</button>
+    </div>
+  </section>
+
+  <!-- INVADERS -->
+  <section id="scr-play" class="play" hidden>
+    <div class="phud">
+      <div><small>SCORE</small><b id="p-score">0</b></div>
+      <div><small>WAVE</small><b id="p-wave">1/3</b></div>
+      <div class="psi"><small>AIR QUALITY (PSI)</small><div class="psibar"><i id="p-psi-bar"></i></div><b id="p-psi">40 GOOD</b></div>
+    </div>
+    <div class="clue" id="p-clue" aria-live="polite">
+      <span class="ic" id="p-clue-ic" aria-hidden="true">🎯</span>
+      <div><small id="p-clue-h">GET READY…</small><p id="p-clue-t">Read the target, then tap the matching pollutant to shoot it.</p><span class="multi" id="p-clue-m" hidden>MORE THAN ONE ANSWER!</span></div>
+    </div>
+    <div class="pf" id="pf">
+      <canvas id="cv" aria-label="Game area: tap a pollutant to shoot it"></canvas>
+      <div class="pf-over" id="pf-over" hidden>
+        <h3 id="po-title">CITY CLEARED!</h3>
+        <p id="po-msg"></p>
+        <button class="pbtn" type="button" id="po-go">FIGHT ▶</button>
+      </div>
+    </div>
+    <div class="pfb info" id="p-fb" aria-live="polite"></div>
+    <div class="legend plegend" id="p-legend"></div>
+    <p class="howto">Tap a pollutant to shoot it, or use ← → to move and SPACE to shoot. The target is always in the front row. Dodge the falling puffs, or shoot them before they reach the city.</p>
+  </section>
+
+  <!-- BOSS -->
+  <section id="scr-boss" class="boss" hidden>
+    <div class="arena">
+      <div class="stars"></div>
+      <div class="bhud">
+        <div class="hp-who"><span class="hname">HERO</span><div class="hearts" id="b-hearts"></div></div>
+        <div class="hp-who boss-side"><span class="bname"><span id="b-name">SMOG LORD</span> <span class="hits-left" id="b-left"></span></span><div class="hpbar"><i id="b-hp"></i></div></div>
+      </div>
+      <div class="stage" id="b-stage">
+        <div class="sprite hero-sp" id="b-hero"></div>
+        <div class="bolt" id="b-bolt"></div>
+        <div class="sprite mon-sp" id="b-mon"></div>
+        <div class="flash" id="b-flash"></div>
+      </div>
+      <div class="charge" id="b-charge"><span id="b-charge-lbl">SMOG LORD IS CHARGING</span><div class="cbar"><i id="b-cbar"></i></div><b id="b-secs">30</b></div>
+    </div>
+    <div class="qbox">
+      <p class="qtype" id="b-qtype">INCOMING ATTACK</p>
+      <p class="qtext" id="b-qtext"></p>
+      <div class="qopts" id="b-opts"></div>
+      <div class="qfb" id="b-fb" hidden aria-live="polite"><p id="b-fb-msg"></p><button class="pbtn" type="button" id="b-next">NEXT ▶</button></div>
+    </div>
+  </section>
+
+  <section id="scr-bend" class="bend" hidden>
+    <h2 id="be-title">VICTORY!</h2>
+    <div class="sprite" id="be-sprite"></div>
+    <p id="be-msg"></p>
+    <span class="start-blink">PRESS BUTTON TO CONTINUE</span>
+    <div class="bend-btns">
+      <button class="pbtn" type="button" id="be-retry" hidden>TRY AGAIN ↻</button>
+      <button class="pbtn" type="button" id="be-go">SEE RESULTS ▶</button>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="scr-result" class="results" hidden>
+    <div class="card res-hero span">
+      <div class="big-ring" id="res-ring"><span id="res-pct">0%</span></div>
+      <div><h2 id="res-title">Nice work!</h2><p id="res-sub"></p></div>
+    </div>
+    <div class="stats span">
+      <div class="stat"><span>Right 1st try</span><b id="res-correct">0</b></div>
+      <div class="stat"><span>Accuracy</span><b id="res-acc">0%</b></div>
+      <div class="stat"><span>Time</span><b id="res-time">0:00</b></div>
+      <div class="stat"><span>Points</span><b id="res-points">0</b></div>
+    </div>
+    <div class="card panel">
+      <h3>How you did</h3>
+      <div class="bars" id="res-bars"></div>
+      <h3>Work on these</h3>
+      <ul class="weak" id="res-weak"></ul>
+    </div>
+    <div class="card panel">
+      <h3>Review</h3>
+      <ul class="review" id="res-review"></ul>
+    </div>
+    <div class="send span" id="send" aria-live="polite"><span id="send-msg">Sending your results…</span><button class="btn alt sm" id="btn-resend" type="button" hidden>Try again</button></div>
+    <div class="res-actions span">
+      <button class="btn big" id="btn-again" type="button">Play again ↻</button>
+      <button class="btn big boss-btn" id="btn-toboss" type="button">Boss fight</button>
+      <button class="btn big alt" id="btn-home" type="button">Back to start</button>
+    </div>
+  </section>
+</main>
+
+<footer>Made for <a href="https://www.instagram.com/scienceiskhool/" target="_blank" rel="noopener">@scienceiskhool</a></footer>
+<canvas id="confetti" hidden></canvas>
+
+<script>
+(function () {
+"use strict";
+
+/* =================== SETTINGS (safe to edit) =================== */
+var SUBMIT_URL = "https://script.google.com/macros/s/AKfycbxCTjRCQzLlWXmmY-5R0p75WCmeFLzC9ZM3gNbGRXpcc_d9qHMXdyCn12B4dHpnrBWe/exec";
+var SHEET_TAB = "Smog Invaders";      // tab name in your Google Sheet
+var BOSS_NAME = "SMOG LORD";
+var MUSIC_VOLUME = 0.25;              // music volume, 0 to 1
+var TRACKS = { tut: "Tutorial.mp3", game: "smog_invaders.mp3", boss: "boss_fight.mp3" };  // music files in the same folder
+var HITS_TO_WIN = 6;                  // correct answers needed to defeat the boss
+var HEARTS = 3;                       // wrong answers allowed in the boss fight
+var BOSS_SECS = 30;                   // seconds per boss question
+var CRIT_SECS = 10;                   // answering within this many seconds is a critical hit (bonus points)
+// Invader waves: n = number of pollutants, speed = how fast they march, drop = seconds between falling puffs
+var WAVES = [
+  { title: "WHERE DO THEY COME FROM?", intro: "Wave 1 is about <b>sources</b>: where each pollutant comes from.", cats: ["source"], n: 6, speed: 13, drop: 3.4 },
+  { title: "WHAT DO THEY DO?", intro: "Wave 2 is about <b>effects</b> on our health and the environment.", cats: ["effect", "risk"], n: 6, speed: 16, drop: 3.0 },
+  { title: "MIXED ATTACK!", intro: "Wave 3 mixes <b>sources and effects</b>. Read carefully!", cats: ["source", "effect", "risk"], n: 8, speed: 19, drop: 2.6 }
+];
+var PSI_START = 40;                   // air quality at the start
+var PSI_LOSE = 300;                   // game over ("hazardous") at this PSI
+var PSI_LAND = { PM: 16, CO: 10, NO2: 10, SO2: 10 };  // PSI added when a puff reaches the city
+// Optional images in the same folder. If a file is missing, a built-in pixel sprite is used instead.
+var HERO_IMG = "hero.png";
+var HERO_HURT_IMG = "hero%20hurt.png";
+var BOSS_IMG = "boss.png";
+var BOSS_HURT_IMG = "boss%20hurt.png";
+var HURT_MS = 2000;
+var CLASSES = [];
+["S1", "S2", "S3", "S4"].forEach(function (l) {
+  ["Charity", "Courage", "Faith", "Hope", "Humility", "Integrity", "Love", "Respect", "Joy"].forEach(function (v) { CLASSES.push(l + " " + v); });
+});
+CLASSES.push("S5 Faith", "Other");
+
+/* =================== CONTENT =================== */
+var ORDER = ["PM", "CO", "NO2", "SO2"];
+var P = {
+  PM:  { name: "Particulate matter", label: "PM", col: "#B9A48C", shade: "#7E6B57",
+         src: "It comes from forest fires and burning of fossil fuels.",
+         eff: "It is the main pollutant in haze: it reduces visibility and irritates the eyes, nose and throat." },
+  CO:  { name: "Carbon monoxide", label: "CO", col: "#A983F0", shade: "#6E4FB0",
+         src: "It comes from incomplete burning of fossil fuels.",
+         eff: "It can cause poisoning, because it reduces the ability of blood to carry oxygen." },
+  NO2: { name: "Oxides of nitrogen", label: "NO2", col: "#F08A3C", shade: "#B05A1A",
+         src: "They come from lightning and burning of nitrogen in hot car engines.",
+         eff: "NO₂ dissolves in rain to form acid rain, which corrodes buildings and kills plants and fish." },
+  SO2: { name: "Sulfur dioxide", label: "SO2", col: "#F2DA3A", shade: "#B09A12",
+         src: "It comes from volcanoes and burning of fossil fuels.",
+         eff: "It dissolves in rain to form acid rain, which corrodes buildings and kills plants and fish." }
+};
+
+// Wave targets. "t" completes the sentence "Shoot the pollutant that …"
+var CLUES = [
+  { id: "s_fire", cat: "source", err: "src_PM", ic: "🔥", t: "comes from <b>forest fires</b>", ans: ["PM"], why: "Particulate matter comes from forest fires." },
+  { id: "s_ffpm", cat: "source", err: "src_PM", ic: "🌲", t: "comes from <b>forest fires</b> and <b>burning of fossil fuels</b>", ans: ["PM"], why: "Particulate matter comes from forest fires and burning of fossil fuels." },
+  { id: "s_inc", cat: "source", err: "src_CO", ic: "🏭", t: "comes from <b>incomplete burning</b> of fossil fuels", ans: ["CO"], why: "Carbon monoxide comes from incomplete burning of fossil fuels." },
+  { id: "s_camp", cat: "source", err: "src_CO", ic: "🏕️", t: "forms when fuel burns with <b>too little oxygen</b>", ans: ["CO"], why: "Burning with too little oxygen is incomplete burning. It makes carbon monoxide." },
+  { id: "s_light", cat: "source", err: "src_NO2", ic: "⚡", t: "comes from <b>lightning</b>", ans: ["NO2"], why: "Lightning produces oxides of nitrogen." },
+  { id: "s_car", cat: "source", err: "src_NO2", ic: "🚗", t: "comes from burning of <b>nitrogen</b> in <b>hot car engines</b>", ans: ["NO2"], why: "Oxides of nitrogen form when nitrogen burns in hot car engines." },
+  { id: "s_volc", cat: "source", err: "src_SO2", ic: "🌋", t: "comes from <b>volcanoes</b>", ans: ["SO2"], why: "Sulfur dioxide comes from volcanoes." },
+  { id: "s_volff", cat: "source", err: "src_SO2", ic: "🌋", t: "comes from <b>volcanoes</b> and <b>burning of fossil fuels</b>", ans: ["SO2"], why: "Sulfur dioxide comes from volcanoes and burning of fossil fuels." },
+  { id: "e_haze", cat: "effect", err: "eff_PM", ic: "🌫️", t: "is the <b>main pollutant in haze</b>", ans: ["PM"], why: "Particulate matter is the main pollutant in haze." },
+  { id: "e_vis", cat: "effect", err: "eff_PM", ic: "🔭", t: "<b>reduces visibility</b> (you can't see far)", ans: ["PM"], why: "Particulate matter in haze reduces visibility." },
+  { id: "e_irr", cat: "effect", err: "eff_PM", ic: "👃", t: "<b>irritates</b> the eyes, nose and throat", ans: ["PM"], why: "Particulate matter in haze irritates the eyes, nose and throat." },
+  { id: "r_risk", cat: "risk", err: "risk", ic: "👵", t: "harms the <b>elderly</b>, <b>young children</b> and <b>asthmatic people</b> most", ans: ["PM"], why: "During haze, particulate matter puts the elderly, young children and asthmatic people most at risk." },
+  { id: "e_poison", cat: "effect", err: "eff_CO", ic: "☠️", t: "can cause <b>poisoning</b>", ans: ["CO"], why: "Carbon monoxide can cause poisoning." },
+  { id: "e_blood", cat: "effect", err: "eff_CO", ic: "🩸", t: "<b>reduces the ability of blood</b> to carry oxygen", ans: ["CO"], why: "Carbon monoxide reduces the ability of blood to carry oxygen." },
+  { id: "e_acid", cat: "effect", err: "acid", ic: "🌧️", t: "dissolves in rain to form <b>acid rain</b>", ans: ["NO2", "SO2"], why: "Oxides of nitrogen and sulfur dioxide both dissolve in rain to form acid rain." },
+  { id: "e_corr", cat: "effect", err: "acid", ic: "🏛️", t: "forms acid rain that <b>corrodes buildings</b>", ans: ["NO2", "SO2"], why: "NO₂ and SO₂ form acid rain, which corrodes buildings." },
+  { id: "e_fish", cat: "effect", err: "acid", ic: "🐟", t: "forms acid rain that <b>kills plants and fish</b>", ans: ["NO2", "SO2"], why: "NO₂ and SO₂ form acid rain, which kills plants and fish." },
+  { id: "e_resp", cat: "effect", err: "resp", ic: "🫁", t: "can cause <b>respiratory</b> (breathing) problems", ans: ["PM", "CO", "NO2", "SO2"], why: "All four pollutants can cause respiratory problems!" }
+];
+
+// Boss questions. The first answer is the correct one (options are shuffled).
+var BOSS_Q = [
+  { cat: "effect", err: "eff_PM", ps: ["PM"], q: "Which pollutant is the main pollutant in haze?", a: ["Particulate matter", "Carbon monoxide", "Sulfur dioxide", "Oxides of nitrogen"], why: "Haze is mainly particulate matter, often from forest fires." },
+  { cat: "source", err: "src_SO2", ps: ["SO2"], q: "Which pollutant comes from volcanoes?", a: ["Sulfur dioxide", "Carbon monoxide", "Oxides of nitrogen", "Oxygen"], why: "Volcanoes release sulfur dioxide." },
+  { cat: "source", err: "src_NO2", ps: ["NO2"], q: "Lightning produces which pollutant?", a: ["Oxides of nitrogen", "Sulfur dioxide", "Carbon monoxide", "Particulate matter"], why: "Lightning produces oxides of nitrogen." },
+  { cat: "source", err: "src_CO", ps: ["CO"], q: "Carbon monoxide is produced by…", a: ["incomplete burning of fossil fuels", "lightning", "volcanoes", "rain falling on buildings"], why: "When fossil fuels burn without enough oxygen (incomplete burning), carbon monoxide forms." },
+  { cat: "effect", err: "eff_CO", ps: ["CO"], q: "Why is carbon monoxide poisonous?", a: ["It reduces the ability of blood to carry oxygen", "It forms acid rain", "It reduces visibility", "It corrodes buildings"], why: "Carbon monoxide reduces the ability of blood to carry oxygen, so it causes poisoning." },
+  { cat: "effect", err: "acid", ps: ["NO2", "SO2"], q: "Which TWO pollutants dissolve in rain to form acid rain?", a: ["Sulfur dioxide and oxides of nitrogen", "Carbon monoxide and particulate matter", "Particulate matter and sulfur dioxide", "Carbon monoxide and oxides of nitrogen"], why: "SO₂ and NO₂ dissolve in rain to form acid rain." },
+  { cat: "effect", err: "acid", ps: ["NO2", "SO2"], q: "What can acid rain do?", a: ["Corrode buildings and kill plants and fish", "Make the air hazy", "Poison our blood", "Make plants grow faster"], why: "Acid rain corrodes buildings and kills plants and fish." },
+  { cat: "risk", err: "risk", ps: ["PM"], q: "During haze, who is most at risk?", a: ["The elderly, young children and asthmatic people", "Only people who drive cars", "Only fish in ponds", "No one, because haze is harmless"], why: "The elderly, young children and asthmatic people are most at risk during haze." },
+  { cat: "effect", err: "eff_PM", ps: ["PM"], q: "Haze can irritate your…", a: ["eyes, nose and throat", "hair and nails", "bones and muscles", "teeth and tongue"], why: "Particulate matter in haze irritates the eyes, nose and throat." },
+  { cat: "source", err: "src_NO2", ps: ["NO2"], q: "Oxides of nitrogen form when nitrogen burns in…", a: ["hot car engines", "volcanoes", "ponds and rivers", "forest leaves"], why: "Nitrogen burns in hot car engines to form oxides of nitrogen." },
+  { cat: "source", err: "src_PM", ps: ["PM"], q: "Forest fires release a lot of which pollutant, causing haze?", a: ["Particulate matter", "Sulfur dioxide", "Oxides of nitrogen", "Oxygen"], why: "Forest fires release particulate matter, the main pollutant in haze." },
+  { cat: "effect", err: "resp", ps: ["PM", "CO", "NO2", "SO2"], q: "Which problem can ALL four pollutants cause?", a: ["Respiratory (breathing) problems", "Acid rain", "Poisoning of the blood", "Reduced visibility"], why: "All four pollutants can cause respiratory problems." },
+  { cat: "effect", err: "eff_PM", ps: ["PM"], q: "Which pollutant makes it hard to see far (reduces visibility)?", a: ["Particulate matter", "Carbon monoxide", "Sulfur dioxide", "Oxides of nitrogen"], why: "Particulate matter in haze reduces visibility." },
+  { cat: "effect", err: "eff_CO", ps: ["CO"], q: "A car engine is left running in a closed garage. Which pollutant is most dangerous to people inside?", a: ["Carbon monoxide", "Sulfur dioxide", "Particulate matter", "Oxygen"], why: "Burning fuel in the engine makes carbon monoxide. In a closed space it builds up and causes poisoning." },
+  { cat: "source", err: "src_SO2", ps: ["SO2"], q: "Which pollutant comes from BOTH volcanoes and burning of fossil fuels?", a: ["Sulfur dioxide", "Carbon monoxide", "Oxides of nitrogen", "Oxygen"], why: "Sulfur dioxide comes from volcanoes and burning of fossil fuels." },
+  { cat: "reduce", err: "reduce_car", ps: [], q: "Which is the BEST way to reduce air pollution from motor vehicles?", a: ["Carpool or take public transport", "Drive alone every day", "Leave the engine running while waiting", "Take the car for very short trips"], why: "Carpooling and public transport mean fewer vehicles burning fossil fuels." },
+  { cat: "reduce", err: "reduce_car", ps: [], q: "Why should drivers turn off idling engines?", a: ["An idling engine burns fuel and gives out pollutants without going anywhere", "It makes the car go faster", "It keeps the air-con colder", "It makes more oxygen"], why: "An idling engine keeps burning fuel and giving out pollutants." },
+  { cat: "reduce", err: "reduce_car", ps: [], q: "Which car gives out less air pollution?", a: ["A hybrid car", "An old car that gives out black smoke", "A car left idling outside school", "A car that burns more fuel"], why: "Hybrid cars burn less fuel, so they give out fewer pollutants." },
+  { cat: "reduce", err: "reduce_car", ps: [], q: "Walking or cycling to school reduces air pollution because…", a: ["fewer vehicles burn fossil fuels", "it causes acid rain", "it makes haze worse", "it uses more electricity"], why: "Walking or cycling means fewer vehicles burning fossil fuels." },
+  { cat: "reduce", err: "reduce_ind", ps: [], q: "How can factories reduce the pollutants they release?", a: ["Fit exhaust filters", "Burn more fossil fuels", "Paint their chimneys", "Work only at night"], why: "Exhaust filters remove pollutants before they reach the air." },
+  { cat: "reduce", err: "reduce_ind", ps: [], q: "How can YOU help reduce pollution from industries?", a: ["Use less electricity", "Leave the lights on all day", "Keep the air-con on in empty rooms", "Charge devices all night"], why: "Most electricity comes from burning fossil fuels, so using less means less pollution." },
+  { cat: "reduce", err: "reduce_ind", ps: [], q: "Why do governments conduct strict checks on factories?", a: ["To control and limit their emissions", "To help them sell more", "To make their chimneys taller", "To make them use more fuel"], why: "Strict checks control and limit the pollutants factories give out." },
+  { cat: "reduce", err: "reduce_ind", ps: [], q: "Why does using less electricity reduce air pollution?", a: ["Most electricity is made by burning fossil fuels", "Electricity is made from rain", "Electric wires give out smoke", "Electricity causes lightning"], why: "Power stations burn fossil fuels to make electricity." },
+  { cat: "reduce", err: "reduce_waste", ps: [], q: "How can we reduce air pollution from waste incineration?", a: ["Reduce, reuse and recycle", "Throw away more rubbish", "Burn rubbish at home", "Buy more things wrapped in plastic"], why: "Less rubbish means less waste burnt in incinerators." },
+  { cat: "reduce", err: "reduce_waste", ps: [], q: "Which packaging choice helps reduce air pollution from incineration?", a: ["Minimise packaging or use biodegradable packaging", "Wrap every item in plastic", "Use two plastic bags instead of one", "Use more styrofoam boxes"], why: "Less packaging, or biodegradable packaging, means less waste to burn." }
+];
+
+var ERR = {
+  src_PM: { label: "Sources of particulate matter", tip: "Forest fires and burning of fossil fuels." },
+  src_CO: { label: "Source of carbon monoxide", tip: "Incomplete burning of fossil fuels (not enough oxygen)." },
+  src_NO2: { label: "Sources of oxides of nitrogen", tip: "Lightning, and burning of nitrogen in hot car engines." },
+  src_SO2: { label: "Sources of sulfur dioxide", tip: "Volcanoes and burning of fossil fuels." },
+  eff_PM: { label: "Effects of particulate matter", tip: "Main pollutant in haze: reduces visibility, irritates the eyes, nose and throat." },
+  eff_CO: { label: "Effects of carbon monoxide", tip: "Poisoning: it reduces the ability of blood to carry oxygen." },
+  acid: { label: "Acid rain", tip: "NO₂ and SO₂ dissolve in rain to form acid rain. It corrodes buildings and kills plants and fish." },
+  resp: { label: "Respiratory problems", tip: "All four pollutants can cause respiratory problems." },
+  risk: { label: "Who is most at risk", tip: "The elderly, young children and asthmatic people are most at risk during haze." },
+  reduce_car: { label: "Reducing pollution from vehicles", tip: "Walk or cycle, carpool, take public transport, use hybrid cars, turn off idling engines." },
+  reduce_ind: { label: "Reducing pollution from industries", tip: "Use less electricity, fit exhaust filters, strict government checks on emissions." },
+  reduce_waste: { label: "Reducing pollution from waste incineration", tip: "Reduce, reuse and recycle; minimise packaging or use biodegradable packaging." },
+  timeout: { label: "Running out of time", tip: "Read the question once, cross out the silly options, then pick." }
+};
+
+/* =================== HELPERS =================== */
+var $ = function (id) { return document.getElementById(id); };
+function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+function fx(f) { return esc(f).replace(/([A-Z])(\d)/g, '$1<span class="sub">$2</span>'); }
+function store(k, v) { try { localStorage.setItem("smoginv_" + k, JSON.stringify(v)); } catch (e) {} }
+function load(k, d) { try { var v = localStorage.getItem("smoginv_" + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
+var SCREENS = ["scr-start", "scr-tut", "scr-play", "scr-boss", "scr-bend", "scr-result"];
+function show(id) {
+  SCREENS.forEach(function (s) { $(s).hidden = s !== id; });
+  document.body.classList.toggle("dark", id === "scr-tut" || id === "scr-play" || id === "scr-boss" || id === "scr-bend");
+  $("btn-quit").hidden = id === "scr-start"; window.scrollTo(0, 0);
+}
+function fmtTime(s) { s = Math.round(s); return Math.floor(s / 60) + ":" + ("0" + s % 60).slice(-2); }
+function stripTags(h) { var d = document.createElement("div"); d.innerHTML = h; return d.textContent.replace(/\s+/g, " ").trim(); }
+function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+function names(ts) { var n = ts.map(function (t) { return P[t].name; }); return n.length < 2 ? n.join("") : n.slice(0, -1).join(", ") + " or " + n[n.length - 1]; }
+
+/* =================== PIXEL ART =================== */
+var CLOUD_A = [
+  "....kkkkkk....",
+  "..kkCCCCCCkk..",
+  ".kCCLCCCCCCCk.",
+  "kCCwwCCCCwwCCk",
+  "kCCwkCCCCwkCCk",
+  "kCCCCCCCCCCCCk",
+  "kDCCCkkkkCCCDk",
+  ".kDDCCCCCCDDk.",
+  "..kDk.kDk.kDk.",
+  "..k...k...k..."
+];
+var CLOUD_B = CLOUD_A.slice(0, 8).concat([".kDk.kDk.kDk..", ".k...k...k...."]);
+var PUFF = ["..kkk..", ".kCCCk.", "kCCDCCk", "kCCCCCk", ".kCCCk.", "..kkk.."];
+var SHIP_A = [
+  "......kwk......",
+  ".....kwtwk.....",
+  ".....kwtwk.....",
+  "....kwtGtwk....",
+  "..kkwttttttkk..",
+  ".kwwttttttttwk.",
+  "kwwttkkkkkttwwk",
+  "kkkk.......kkkk",
+  ".....o...o.....",
+  ".....Y...Y....."
+];
+var SHIP_B = SHIP_A.slice(0, 8).concat([".....Y...Y.....", "......o...o...."]);
+var SHIP_PAL = { k: "#0D0B1A", w: "#FFFFFF", t: "#2EF2E0", G: "#FCE883", o: "#FF8243", Y: "#FCE883" };
+var SHIP_CO = { k: "#0D0B1A", w: "#D9C8FF", t: "#A983F0", G: "#6E4FB0", o: "#6E4FB0", Y: "#A983F0" };
+var HERO_MAP = [
+  "......kkkkk.....",
+  ".....kHHHHHk....",
+  "....kHHHHHHHk...",
+  "....kHSSSSSHk...",
+  "...kkkkSSkkkk...",
+  "...kGGkSSkGGk...",
+  "....kkSSSSkk....",
+  ".....kSmmSk.....",
+  "....kWWkkWWk....",
+  "...kWWWtWWWWk.kk",
+  "..kWWkWtWWkWWkFk",
+  "..kSkWWtWWWkSkFk",
+  "...kkWWtWWWWkkkk",
+  "....kWWWWWWk....",
+  "....kBBkkBBk....",
+  "....kkk..kkk...."
+];
+var HERO_PAL = { k: "#1F2A2E", H: "#3B2A20", S: "#F4C9A8", G: "#2EF2E0", m: "#C0504D", W: "#FFFFFF", t: "#069494", F: "#FF8243", B: "#3A4FA0" };
+var MON_MAP = [
+  "...o......o......o...",
+  "..oYo....oYo....oYo..",
+  "..ksk....ksk....ksk..",
+  "..ksk....ksk....ksk..",
+  ".kkskkkkkkskkkkkkskk.",
+  "kGGGGGGGGGGGGGGGGGGGk",
+  "kGLLGGGGGGGGGGGGLLGGk",
+  "kGGkkkGGGGGGGGGkkkGGk",
+  "kGGGRRkGGGGGGGkRRGGGk",
+  "kGGGRRRGGGGGGGRRRGGGk",
+  "kGGGGGGGGGGGGGGGGGGGk",
+  "kGGGkkkkkkkkkkkkkGGGk",
+  "kGGGkwkwkwkwkwkwkGGGk",
+  "kGGGGkkkkkkkkkkkGGGGk",
+  "kDGGGGGGGGGGGGGGGGGDk",
+  ".kDDGGGGGGGGGGGGGDDk.",
+  "..kDDkDDDkkDDDkDDDk..",
+  "...kk.kkk..kkk.kkk..."
+];
+var MON_PAL = { k: "#0D0B1A", G: "#7C808C", L: "#A3A7B2", D: "#4E525C", R: "#FF4D5E", Y: "#FCE883", s: "#3A3D45", o: "#FF8243", w: "#FFFFFF" };
+var BOLT_MAP = ["..kkk..", ".kyyyk.", "kyFFFyk", "kyFwFyk", "kyFFFyk", ".kyyyk.", "..kkk.."];
+var BOLT_PAL = { k: "#0D0B1A", y: "#2EF2E0", F: "#FFFFFF", w: "#FCE883" };
+var HEART_MAP = [".kk.kk.", "kRRkRRk", "kRwRRRk", "kRRRRRk", ".kRRRk.", "..kRk..", "...k..."];
+var HEART_PAL = { k: "#0D0B1A", R: "#FF4D5E", w: "#FFFFFF" };
+
+function pixelSVG(map, pal) {
+  var w = 0, r = "";
+  map.forEach(function (row, y) { w = Math.max(w, row.length); for (var x = 0; x < row.length; x++) { var c = pal[row[x]]; if (c) r += '<rect x="' + x + '" y="' + y + '" width="1.02" height="1.02" fill="' + c + '"/>'; } });
+  return '<svg viewBox="0 0 ' + w + " " + map.length + '" shape-rendering="crispEdges" aria-hidden="true">' + r + "</svg>";
+}
+function pixelCanvas(map, pal) {
+  var w = 0; map.forEach(function (r) { w = Math.max(w, r.length); });
+  var c = document.createElement("canvas"); c.width = w; c.height = map.length;
+  var x = c.getContext("2d");
+  map.forEach(function (row, y) { for (var i = 0; i < row.length; i++) { var col = pal[row[i]]; if (col) { x.fillStyle = col; x.fillRect(i, y, 1, 1); } } });
+  return c;
+}
+function cloudPal(t, hurt) { return { k: "#0D0B1A", C: hurt ? "#FF4D5E" : P[t].col, D: hurt ? "#A32A35" : P[t].shade, L: "#FFFFFF", w: "#FFFFFF" }; }
+var SPR = {};
+ORDER.forEach(function (t) {
+  SPR[t] = [pixelCanvas(CLOUD_A, cloudPal(t)), pixelCanvas(CLOUD_B, cloudPal(t))];
+  SPR[t + "_hurt"] = [pixelCanvas(CLOUD_A, cloudPal(t, true)), pixelCanvas(CLOUD_B, cloudPal(t, true))];
+  SPR[t + "_puff"] = pixelCanvas(PUFF, cloudPal(t));
+});
+SPR.ship = [pixelCanvas(SHIP_A, SHIP_PAL), pixelCanvas(SHIP_B, SHIP_PAL)];
+SPR.shipCO = [pixelCanvas(SHIP_A, SHIP_CO), pixelCanvas(SHIP_B, SHIP_CO)];
+
+function legendHTML() {
+  return ORDER.map(function (t) {
+    return '<div class="lg-chip"><img src="' + SPR[t][0].toDataURL() + '" alt=""><span><b>' + fx(P[t].label) + "</b>" + P[t].name + "</span></div>";
+  }).join("");
+}
+$("start-legend").innerHTML = legendHTML();
+$("p-legend").innerHTML = legendHTML();
+
+/* boss sprites (images with pixel fallback) */
+var IMG_OK = {};
+function art(src, map, pal) { return src && IMG_OK[src] !== false ? '<img src="' + esc(src) + '" alt="">' : pixelSVG(map, pal); }
+function heroArt(hurt) { return art(hurt && IMG_OK[HERO_HURT_IMG] ? HERO_HURT_IMG : HERO_IMG, HERO_MAP, HERO_PAL); }
+function monArt(hurt) { return art(hurt && IMG_OK[BOSS_HURT_IMG] ? BOSS_HURT_IMG : BOSS_IMG, MON_MAP, MON_PAL); }
+var ORBITS = '<span class="orbit" style="left:-14px;top:30%">CO</span><span class="orbit" style="right:-10px;top:10%;animation-delay:.5s">SO2</span><span class="orbit" style="right:6%;bottom:-6px;animation-delay:1s">PM</span>';
+function paintSprites() {
+  var heroImg = IMG_OK[HERO_IMG] !== false && HERO_IMG, monImg = IMG_OK[BOSS_IMG] !== false && BOSS_IMG;
+  $("b-hero").innerHTML = heroArt(); $("b-hero").classList.toggle("pic", !!heroImg);
+  $("b-mon").innerHTML = monArt() + (monImg ? "" : ORBITS); $("b-mon").classList.toggle("pic", !!monImg);
+}
+[HERO_IMG, HERO_HURT_IMG, BOSS_IMG, BOSS_HURT_IMG].forEach(function (src) {
+  if (!src) return;
+  var im = new Image();
+  im.onload = function () { IMG_OK[src] = true; if (src === HERO_IMG || src === BOSS_IMG) paintSprites(); };
+  im.onerror = function () { IMG_OK[src] = false; if (src === HERO_IMG || src === BOSS_IMG) paintSprites(); };
+  im.src = src;
+});
+paintSprites();
+var hurtTimers = {};
+function showHurt(id, src) {
+  var img = $(id).querySelector("img"); if (!img || !src || IMG_OK[src] !== true) return;
+  var base = id === "b-hero" ? HERO_IMG : BOSS_IMG;
+  clearTimeout(hurtTimers[id]); img.src = src;
+  if (id === "b-hero") return; // the hero stays hurt until the next attack (see nextQ)
+  hurtTimers[id] = setTimeout(function () { var i = $(id).querySelector("img"); if (i) i.src = base; }, HURT_MS);
+}
+$("b-bolt").innerHTML = pixelSVG(BOLT_MAP, BOLT_PAL);
+$("b-name").textContent = BOSS_NAME;
+
+/* =================== SOUND =================== */
+var Sound = {
+  on: load("sound", true), ctx: null,
+  tone: function (f, type, dur, vol, delay) {
+    if (!this.on) return;
+    try {
+      this.ctx = this.ctx || new (window.AudioContext || window.webkitAudioContext)();
+      var c = this.ctx, t = c.currentTime + (delay || 0), o = c.createOscillator(), g = c.createGain();
+      o.type = type; o.frequency.setValueAtTime(f, t);
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + dur + .02);
+    } catch (e) {}
+  },
+  shoot: function () { this.tone(880, "square", .05, .03); this.tone(1320, "square", .04, .02, .03); },
+  pop: function () { this.tone(520, "triangle", .07, .06); },
+  ok: function () { this.tone(660, "square", .09, .06); this.tone(990, "square", .14, .06, .08); },
+  bad: function () { this.tone(180, "square", .2, .07); },
+  land: function () { this.tone(110, "sawtooth", .18, .05); },
+  hit: function () { [880, 660, 990].forEach(function (n, i) { Sound.tone(n, "square", .07, .07, i * .05); }); },
+  hurt: function () { this.tone(140, "sawtooth", .3, .08); this.tone(90, "square", .3, .06, .1); },
+  win: function () { [523, 659, 784, 1047, 784, 1047].forEach(function (n, i) { Sound.tone(n, "square", .14, .06, i * .12); }); },
+  wave: function () { [523, 659, 784, 1047].forEach(function (n, i) { Sound.tone(n, "square", .1, .05, i * .09); }); },
+  lose: function () { [392, 330, 262, 196].forEach(function (n, i) { Sound.tone(n, "square", .22, .06, i * .2); }); }
+};
+var Music = {
+  el: $("music"), on: load("music", true), vol: MUSIC_VOLUME,
+  inGame: function () { return !$("scr-boss").hidden || !$("scr-play").hidden || !$("scr-tut").hidden; },
+  use: function (k) { if (this.cur !== k) { this.cur = k; this.el.src = TRACKS[k]; } this.play(); },
+  play: function () { if (!this.on) return; clearInterval(this.fade); try { this.el.volume = this.vol; var p = this.el.play(); if (p && p.catch) p.catch(function () {}); } catch (e) {} },
+  stop: function () { clearInterval(this.fade); try { this.el.pause(); this.el.currentTime = 0; this.el.volume = this.vol; } catch (e) {} },
+  fadeOut: function () {
+    var el = this.el, self = this, v = el.volume;
+    clearInterval(this.fade);
+    this.fade = setInterval(function () { v -= .03; if (v <= 0) self.stop(); else el.volume = v; }, 60);
+  }
+};
+function paintSound() {
+  $("btn-sound").classList.toggle("off", !Sound.on); $("btn-sound").setAttribute("aria-label", Sound.on ? "Sound effects on" : "Sound effects off");
+  $("btn-music").classList.toggle("off", !Music.on); $("btn-music").setAttribute("aria-label", Music.on ? "Music on" : "Music off");
+}
+$("btn-sound").addEventListener("click", function () { Sound.on = !Sound.on; store("sound", Sound.on); paintSound(); });
+$("btn-music").addEventListener("click", function () {
+  Music.on = !Music.on; store("music", Music.on); paintSound();
+  if (!Music.on) Music.el.pause(); else if (Music.inGame()) Music.play();
+});
+paintSound();
+
+/* =================== START SCREEN =================== */
+var G = {}, B = null, Inv = null;
+(function setup() {
+  var sel = $("in-cls");
+  CLASSES.forEach(function (c) { var o = document.createElement("option"); o.textContent = c; sel.appendChild(o); });
+  var st = load("student", null);
+  if (st) { $("in-name").value = st.name || ""; sel.value = st.cls || ""; $("in-reg").value = st.reg || ""; }
+  paintStart();
+})();
+function paintStart() {
+  var b = load("best", {});
+  $("txt-best").textContent = "Mission " + (b.mission != null ? b.mission : "–") + " · Boss " + (b.boss != null ? b.boss : "–");
+}
+function readStudent() {
+  var name = $("in-name").value.trim(), cls = $("in-cls").value, reg = $("in-reg").value.trim();
+  if (!name) return err("Type your name."), null;
+  if (!cls) return err("Choose your class."), null;
+  if (!/^\d{1,2}$/.test(reg)) return err("Type your register number (1–2 digits)."), null;
+  err("");
+  var s = { name: name, cls: cls, reg: reg }; store("student", s); return s;
+  function err(m) { $("form-err").textContent = m; }
+}
+$("btn-play").addEventListener("click", function () { var s = readStudent(); if (s) { Sound.tone(1, "sine", .01, .0001); startMission(s); } });
+$("btn-boss").addEventListener("click", function () { var s = readStudent(); if (s) { Sound.tone(1, "sine", .01, .0001); newSession(s, "boss"); startBoss(); } });
+$("btn-quit").addEventListener("click", function () { stopGame(); stopBossTimer(); Music.stop(); Confetti.stop(); show("scr-start"); paintStart(); });
+$("form-start").addEventListener("submit", function (e) { e.preventDefault(); });
+
+function newSession(student, mode) { G = { student: student, mode: mode, points: 0, err: {}, t0: Date.now(), log: [] }; B = null; Inv = null; }
+function addErr(k) { if (k) G.err[k] = (G.err[k] || 0) + 1; }
+
+/* =================== TUTORIAL =================== */
+var TUT = [
+  { t: "PM", src: [["🔥", "Forest fires"], ["🏭", "Burning of fossil fuels"]],
+    harm: "Respiratory problems. It is the <b>main pollutant in haze</b>: it reduces visibility and irritates the eyes, nose and throat. The elderly, young children and asthmatic people are most at risk.",
+    game: "When its puffs reach the city, <b>the screen gets hazy</b> and it's harder to see." },
+  { t: "CO", src: [["🏕️", "Burning with too little oxygen"], ["🏭", "Incomplete burning of fossil fuels"]],
+    harm: "Respiratory problems and <b>poisoning</b>: it reduces the ability of blood to carry oxygen.",
+    game: "If its puff hits your ship, <b>you slow down</b> (less oxygen!)." },
+  { t: "NO2", src: [["⚡", "Lightning"], ["🚗", "Burning of nitrogen in hot car engines"]],
+    harm: "Respiratory problems. NO₂ <b>dissolves in rain to form acid rain</b>, which corrodes buildings and kills plants and fish.",
+    game: "When its puffs reach the city, <b>acid rain</b> damages buildings, trees and fish." },
+  { t: "SO2", src: [["🌋", "Volcanoes"], ["🏭", "Burning of fossil fuels"]],
+    harm: "Respiratory problems. It <b>dissolves in rain to form acid rain</b>, which corrodes buildings and kills plants and fish.",
+    game: "When its puffs reach the city, <b>acid rain</b> damages buildings, trees and fish." },
+  { how: true }
+];
+var tutI = 0;
+function openTutorial() { tutI = 0; show("scr-tut"); paintTut(); Music.stop(); Music.use("tut"); }
+function paintTut() {
+  var st = TUT[tutI];
+  $("tut-dots").innerHTML = TUT.map(function (_, i) { return '<i class="' + (i <= tutI ? "on" : "") + '"></i>'; }).join("");
+  $("tut-back").style.visibility = tutI ? "visible" : "hidden";
+  $("tut-next").textContent = tutI < TUT.length - 1 ? "NEXT ▶" : "START MISSION ▶";
+  if (st.how) {
+    $("tut-step").textContent = "HOW TO PLAY " + (tutI + 1) + "/" + TUT.length;
+    $("tut-scene").innerHTML = ORDER.map(function (t, i) { return '<div class="src"><img class="inv" style="animation-delay:' + (i * .5) + 's;bottom:40px" src="' + SPR[t][0].toDataURL() + '" alt=""><span class="lbl" style="min-height:0">' + fx(P[t].label) + "</span></div>"; }).join("");
+    $("tut-body").innerHTML = "<h3>HOW TO PLAY</h3><ul>" +
+      "<li>🎯 Read the <b>target</b> at the top, e.g. “comes from volcanoes”. The answer is always in the <b>front row</b>.</li>" +
+      "<li>⌨️ Keyboard: <kbd>←</kbd> <kbd>→</kbd> move, <kbd>SPACE</kbd> shoot. 👆 Touch: tap the invader you want to hit.</li>" +
+      "<li>💥 Invaders drop puffs. <b>Dodge them</b> or shoot them. Puffs that land make the PSI (air quality) go up.</li>" +
+      "<li>🏆 Clear 3 waves while keeping the PSI below " + PSI_LOSE + ", then beat the <b>" + BOSS_NAME + "</b>.</li></ul>";
+    return;
+  }
+  var p = P[st.t];
+  $("tut-step").textContent = "MEET THE INVADERS " + (tutI + 1) + "/" + TUT.length;
+  $("tut-scene").innerHTML = st.src.map(function (x) {
+    return '<div class="src"><img class="smoke" src="' + SPR[st.t + "_puff"].toDataURL() + '" alt=""><img class="inv" src="' + SPR[st.t][0].toDataURL() + '" alt=""><span class="em" aria-hidden="true">' + x[0] + '</span><span class="lbl">' + x[1] + "</span></div>";
+  }).join("");
+  $("tut-body").innerHTML = "<h3>" + fx(p.label) + " · " + esc(p.name.toUpperCase()) + "</h3>" +
+    "<p><b>Comes from:</b> " + st.src.map(function (x) { return x[1].toLowerCase(); }).join(" and ") + ".</p>" +
+    "<p><b>Effects:</b> " + st.harm.replace(/<b>/g, "<strong>").replace(/<\/b>/g, "</strong>") + "</p>" +
+    '<p class="game"><b>In the game:</b> ' + st.game.replace(/<b>/g, "<strong>").replace(/<\/b>/g, "</strong>") + "</p>";
+}
+$("btn-tut").addEventListener("click", function () { Sound.tone(1, "sine", .01, .0001); openTutorial(); });
+$("tut-back").addEventListener("click", function () { if (tutI > 0) { tutI--; paintTut(); Sound.pop(); } });
+$("tut-next").addEventListener("click", function () {
+  if (tutI < TUT.length - 1) { tutI++; paintTut(); Sound.pop(); return; }
+  store("tutDone", true);
+  Music.stop(); show("scr-start");
+  var s = readStudent(); if (s) startMission(s); else $("in-name").focus();
+});
+document.addEventListener("keydown", function (e) {
+  if ($("scr-tut").hidden) return;
+  if (e.key === "ArrowRight") $("tut-next").click(); else if (e.key === "ArrowLeft") $("tut-back").click();
+});
+
+/* =================== INVADERS =================== */
+var WW = 360, WH = 480, GY = 470, SHIP_Y = 414, EW = 42, EH = 30, GAPX = 60, GAPY = 54;
+var CV = $("cv"), CX = CV.getContext("2d"), SX = 1, SY = 1, raf2 = 0, lastT = 0;
+var STARS = []; for (var si = 0; si < 40; si++) STARS.push({ x: Math.random() * WW, y: Math.random() * 380, s: Math.random() < .2 ? 2 : 1, tw: Math.random() * 6 });
+var PIX = "'Press Start 2P', ui-monospace, monospace";
+
+function resize() {
+  var r = CV.getBoundingClientRect(); if (!r.width) return;
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  CV.width = Math.round(r.width * dpr); CV.height = Math.round(r.height * dpr);
+  SX = CV.width / WW; SY = CV.height / WH;
+}
+window.addEventListener("resize", function () { if (!$("scr-play").hidden) resize(); });
+
+function makeCity() {
+  return [
+    { k: "bldg", x: 8, w: 38, h: 30 }, { k: "tree", x: 52, w: 26, h: 26 }, { k: "pond", x: 84, w: 80, h: 10 },
+    { k: "bldg", x: 170, w: 44, h: 38 }, { k: "tree", x: 220, w: 26, h: 26 }, { k: "bldg", x: 252, w: 38, h: 28 },
+    { k: "tree", x: 296, w: 26, h: 26 }, { k: "bldg", x: 328, w: 26, h: 34 }
+  ].map(function (s) { s.hp = 3; return s; });
+}
+
+function startMission(student) {
+  newSession(student, "mission");
+  Inv = {
+    wave: -1, wavesCleared: 0, psi: PSI_START, haze: 0, anim: 0, running: true, paused: false, phase: "intro",
+    ship: { x: WW / 2, tx: WW / 2, fire: false, slow: 0, cool: 0, stun: 0, hitT: 0 },
+    shots: [], puffs: [], parts: [], drops: [], texts: [], enemies: [], structs: makeCity(), keys: {},
+    caption: null, seen: {}, fbT: 0, pendingInfo: null, recent: [], wrongPicks: []
+  };
+  show("scr-play"); $("pf-over").hidden = true;
+  Music.stop(); Music.use("game");
+  requestAnimationFrame(function () { resize(); });
+  if (document.fonts && document.fonts.load) document.fonts.load("10px 'Press Start 2P'");
+  nextWave();
+  cancelAnimationFrame(raf2); lastT = performance.now(); raf2 = requestAnimationFrame(loop);
+}
+function stopGame() { if (Inv) Inv.running = false; cancelAnimationFrame(raf2); }
+
+function nextWave() {
+  Inv.wave++;
+  var W = WAVES[Inv.wave];
+  var types = shuffle(ORDER);
+  while (types.length < W.n) types.push(pick(ORDER));
+  types = shuffle(types);
+  var cols = W.n <= 6 ? 3 : 4;
+  Inv.cols = cols; Inv.rows = Math.ceil(W.n / cols);
+  Inv.enemies = types.map(function (t, i) { return { type: t, col: i % cols, row: Math.floor(i / cols), alive: true, flash: 0, hint: false }; });
+  Inv.fx = (WW - ((cols - 1) * GAPX + EW)) / 2; Inv.fy = -130; Inv.dir = 1;
+  Inv.wrongWave = 0; Inv.dropT = W.drop; Inv.phase = "intro"; Inv.introT = 2.6; Inv.clue = null; Inv.respUsed = false;
+  Inv.puffs = []; Inv.shots = [];
+  $("p-wave").textContent = (Inv.wave + 1) + "/" + WAVES.length;
+  setClue(null);
+  fbSet("info", W.intro);
+  Sound.wave();
+}
+function frontEnemies() {
+  var f = {};
+  Inv.enemies.forEach(function (e) { if (e.alive && (!f[e.col] || e.row > f[e.col].row)) f[e.col] = e; });
+  return Object.keys(f).map(function (k) { return f[k]; });
+}
+function frontTypes() { var o = []; frontEnemies().forEach(function (e) { if (o.indexOf(e.type) < 0) o.push(e.type); }); return o; }
+function aliveTypes() { var o = []; Inv.enemies.forEach(function (e) { if (e.alive && o.indexOf(e.type) < 0) o.push(e.type); }); return o; }
+function pickClue() {
+  // targets always match an invader in the front row, so keyboard players can reach it
+  var W = WAVES[Inv.wave], alive = frontTypes();
+  if (!alive.length) { Inv.clue = null; return; }
+  var c = CLUES.filter(function (c) { return W.cats.indexOf(c.cat) > -1 && c.ans.some(function (a) { return alive.indexOf(a) > -1; }); });
+  var noResp = c.filter(function (x) { return x.id !== "e_resp"; });
+  if (Inv.respUsed && noResp.length) c = noResp;
+  var fresh = c.filter(function (x) { return Inv.recent.indexOf(x.id) < 0; });
+  if (fresh.length) c = fresh;
+  var clue = pick(c);
+  if (clue.id === "e_resp") Inv.respUsed = true;
+  Inv.recent.push(clue.id); if (Inv.recent.length > 5) Inv.recent.shift();
+  Inv.clue = clue; Inv.tries = 0; Inv.wrongPicks = [];
+  Inv.enemies.forEach(function (e) { e.hint = false; });
+  setClue(clue);
+}
+function setClue(c) {
+  var box = $("p-clue");
+  if (!c) {
+    $("p-clue-ic").textContent = "🎯"; $("p-clue-h").textContent = Inv && Inv.wave >= 0 ? "WAVE " + (Inv.wave + 1) + " · " + WAVES[Inv.wave].title : "GET READY…";
+    $("p-clue-t").innerHTML = "Get ready… read the target, then tap the matching pollutant."; $("p-clue-m").hidden = true; return;
+  }
+  var multi = c.ans.length > 1;
+  $("p-clue-ic").textContent = c.ic;
+  $("p-clue-h").textContent = multi ? "SHOOT A POLLUTANT THAT…" : "SHOOT THE POLLUTANT THAT…";
+  $("p-clue-t").innerHTML = c.t;
+  $("p-clue-m").hidden = !multi;
+  box.classList.remove("pop"); void box.offsetWidth; box.classList.add("pop");
+}
+function fbSet(kind, html) { $("p-fb").className = "pfb " + kind; $("p-fb").innerHTML = html; if (Inv) Inv.fbT = performance.now(); }
+function firstInfo(key, html) {
+  if (Inv.seen[key]) return; Inv.seen[key] = true;
+  if (performance.now() - Inv.fbT > 2500) fbSet("info", html); else Inv.pendingInfo = html;
+}
+function caption(t, col) { Inv.caption = { t: t, col: col || "#FCE883", life: 2.2 }; }
+function floatT(t, x, y, col) { Inv.texts.push({ t: t, x: x, y: y, col: col || "#FCE883", life: 1 }); }
+function burst(x, y, col, n) { for (var i = 0; i < (n || 14); i++) { var a = Math.random() * Math.PI * 2, v = 40 + Math.random() * 90; Inv.parts.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: .5 + Math.random() * .4, col: Math.random() < .3 ? "#FFFFFF" : col, s: 2 + Math.floor(Math.random() * 3) }); } }
+function enemyPos(e) { return { x: Inv.fx + e.col * GAPX, y: Inv.fy + e.row * GAPY }; }
+function clampX(x) { return Math.max(16, Math.min(WW - 16, x)); }
+
+function shoot() {
+  var s = Inv.ship;
+  if (Inv.phase === "over" || Inv.phase === "done" || s.cool > 0 || s.stun > 0 || Inv.shots.length >= 2) return false;
+  Inv.shots.push({ x: s.x, y: SHIP_Y - 12, target: s.target && s.target.alive ? s.target : null }); s.cool = .2; Sound.shoot();
+  s.target = null; return true;
+}
+
+function loop(t) {
+  if (!Inv || !Inv.running) return;
+  var dt = Math.min(.05, (t - lastT) / 1000); lastT = t;
+  if (!Inv.paused) update(dt);
+  draw();
+  raf2 = requestAnimationFrame(loop);
+}
+
+function update(dt) {
+  var I = Inv, W = WAVES[I.wave], s = I.ship;
+  I.anim += dt;
+  // ship
+  var spd = s.stun > 0 ? 0 : s.slow > 0 ? 110 : 300; s.slow = Math.max(0, s.slow - dt); s.cool = Math.max(0, s.cool - dt); s.stun = Math.max(0, s.stun - dt); s.hitT = Math.max(0, s.hitT - dt);
+  if (I.keys.L || I.keys.R) { s.x = clampX(s.x + ((I.keys.R ? 1 : 0) - (I.keys.L ? 1 : 0)) * spd * dt); s.tx = s.x; }
+  else {
+    if (s.target) { if (!s.target.alive || I.phase !== "play") { s.target = null; } else { s.tx = clampX(enemyPos(s.target).x + EW / 2 + I.dir * 6); } }
+    var dx = s.tx - s.x; s.x += Math.sign(dx) * Math.min(Math.abs(dx), spd * dt);
+  }
+  if (s.fire && Math.abs(s.tx - s.x) < 3 && shoot()) s.fire = false;
+
+  if (I.phase === "intro") {
+    I.fy += (34 - I.fy) * Math.min(1, dt * 3);
+    I.introT -= dt;
+    if (I.introT <= 0) { I.phase = "play"; I.fy = 34; pickClue(); }
+  } else if (I.phase === "play") {
+    // march
+    var alive = I.enemies.filter(function (e) { return e.alive; });
+    var speed = W.speed * (1 + Math.min(.8, .1 * I.wrongWave)) * (1 + .6 * (1 - alive.length / I.enemies.length));
+    I.fx += I.dir * speed * dt;
+    var minC = 9, maxC = -1, maxR = -1;
+    alive.forEach(function (e) { minC = Math.min(minC, e.col); maxC = Math.max(maxC, e.col); maxR = Math.max(maxR, e.row); });
+    var left = I.fx + minC * GAPX, right = I.fx + maxC * GAPX + EW;
+    if (right > WW - 6 && I.dir > 0) { I.dir = -1; I.fy += 10; I.fx -= right - (WW - 6); }
+    else if (left < 6 && I.dir < 0) { I.dir = 1; I.fy += 10; I.fx += 6 - left; }
+    if (I.fy + maxR * GAPY + EH > 352) {
+      I.psi += 50; I.fy = 34; caption("SMOG REACHED THE CITY! PSI +50", "#FF4D5E"); Sound.hurt();
+      fbSet("no", "The invaders reached the city and the <b>PSI jumped by 50</b>. Shoot faster: read the target, then tap!");
+    }
+    // drop puffs
+    I.dropT -= dt;
+    if (I.dropT <= 0 && alive.length) {
+      var e = pick(frontEnemies()), p = enemyPos(e);
+      I.puffs.push({ type: e.type, x: p.x + EW / 2, y: p.y + EH, vy: 46 + I.wave * 8, ph: Math.random() * 6 });
+      I.dropT = W.drop * (.8 + Math.random() * .4);
+    }
+  } else if (I.phase === "clear") {
+    I.clearT -= dt;
+    if (I.clearT <= 0) { if (I.wave < WAVES.length - 1) nextWave(); else missionDone(); }
+  }
+  // puffs
+  for (var i = I.puffs.length - 1; i >= 0; i--) {
+    var pf = I.puffs[i]; pf.y += pf.vy * dt; pf.ph += dt * 3; pf.x += Math.sin(pf.ph) * 12 * dt;
+    if (Math.abs(pf.x - s.x) < 16 && Math.abs(pf.y - SHIP_Y) < 12) { I.puffs.splice(i, 1); puffEffect(pf, true); continue; }
+    if (pf.y >= landY(pf.x)) { I.puffs.splice(i, 1); puffEffect(pf, false); }
+  }
+  // shots
+  for (var j = I.shots.length - 1; j >= 0; j--) {
+    var sh = I.shots[j]; sh.y -= 480 * dt;
+    if (sh.y < -10) { I.shots.splice(j, 1); continue; }
+    var hit = false;
+    if (sh.target) {
+      if (!sh.target.alive || I.phase !== "play") { I.shots.splice(j, 1); continue; }
+      var tp = enemyPos(sh.target);
+      if (sh.y <= tp.y + EH + 4) {
+        if (sh.x >= tp.x - 8 && sh.x <= tp.x + EW + 8) hitEnemy(sh.target, tp);
+        I.shots.splice(j, 1);
+      }
+      continue;
+    }
+    for (var k = I.puffs.length - 1; k >= 0; k--) {
+      var q = I.puffs[k];
+      if (Math.abs(q.x - sh.x) < 10 && Math.abs(q.y - sh.y) < 12) {
+        I.puffs.splice(k, 1); burst(q.x, q.y, P[q.type].col, 8); G.points += 10; floatT("+10", q.x, q.y, "#FFFFFF"); Sound.pop(); hit = true; break;
+      }
+    }
+    if (!hit && I.phase === "play") {
+      var byRow = I.enemies.filter(function (x) { return x.alive; }).sort(function (a, b) { return b.row - a.row; });
+      for (var m = 0; m < byRow.length; m++) {
+        var en = byRow[m];
+        var ep = enemyPos(en);
+        if (sh.x >= ep.x - 2 && sh.x <= ep.x + EW + 2 && sh.y >= ep.y && sh.y <= ep.y + EH + 4) { hitEnemy(en, ep); hit = true; break; }
+      }
+    }
+    if (hit) I.shots.splice(j, 1);
+  }
+  // effects
+  I.parts = I.parts.filter(function (p) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 80 * dt; return p.life > 0; });
+  I.texts = I.texts.filter(function (x) { x.life -= dt; x.y -= 30 * dt; return x.life > 0; });
+  I.drops = I.drops.filter(function (d) {
+    d.y += d.vy * dt;
+    if (d.y >= d.to) { if (d.dmg) { d.dmg.hp = Math.max(0, d.dmg.hp - 1); burst(d.x, d.to, "#9BF27A", 6); } return false; }
+    return true;
+  });
+  I.enemies.forEach(function (e) { e.flash = Math.max(0, e.flash - dt); });
+  I.haze = Math.max(0, I.haze - .008 * dt);
+  if (I.caption) { I.caption.life -= dt; if (I.caption.life <= 0) I.caption = null; }
+  if (I.pendingInfo && performance.now() - I.fbT > 2500) { fbSet("info", I.pendingInfo); I.pendingInfo = null; }
+  paintHud();
+  if (I.psi >= PSI_LOSE && I.phase !== "over") loseMission();
+  if (I.phase === "play" && !I.enemies.some(function (e) { return e.alive; })) waveCleared();
+}
+
+function landY(x) {
+  for (var i = 0; i < Inv.structs.length; i++) { var s = Inv.structs[i]; if (x >= s.x && x <= s.x + s.w) return GY - structH(s); }
+  return GY;
+}
+function structH(s) { return s.k === "bldg" ? (s.hp === 0 ? 8 : s.hp === 1 ? s.h * .7 : s.h) : s.k === "tree" ? s.h : 6; }
+function nearestStruct(x, kinds) {
+  var best = null, bd = 1e9;
+  Inv.structs.forEach(function (s) { if (kinds && kinds.indexOf(s.k) < 0) return; var d = Math.abs(s.x + s.w / 2 - x); if (d < bd) { bd = d; best = s; } });
+  return best;
+}
+
+function puffEffect(p, onShip) {
+  var I = Inv, t = p.type;
+  if (onShip) {
+    I.ship.stun = .7; I.ship.hitT = 1; I.shipHits = (I.shipHits || 0) + 1; G.points = Math.max(0, G.points - 20);
+    burst(I.ship.x, SHIP_Y, P[t].col, 12);
+    if (t !== "CO") { Sound.hurt(); floatT("HIT! -20", I.ship.x, SHIP_Y - 18, "#FF4D5E"); firstInfo("dodge", "💥 You got hit by a falling puff! Dodge them with <b>← →</b>, or shoot them before they land."); }
+  }
+  if (onShip && t === "CO") {
+    I.ship.slow = 3.2; I.psi += PSI_LAND.CO; Sound.hurt();
+    caption("CO POISONING! LESS OXYGEN", P.CO.col);
+    floatT("SLOWED!", I.ship.x, SHIP_Y - 18, P.CO.col);
+    firstInfo("COship", "☠️ <b>Carbon monoxide</b> hit you! It reduces the ability of blood to carry oxygen, so you slow down for a few seconds.");
+    return;
+  }
+  I.psi += PSI_LAND[t]; Sound.land();
+  if (t === "PM") {
+    I.haze = Math.min(.6, I.haze + .12);
+    burst(p.x, p.y, P.PM.col, 10);
+    caption("HAZE! VISIBILITY DOWN", P.PM.col);
+    firstInfo("PM", "🌫️ <b>Particulate matter</b> reached the city. It is the main pollutant in <b>haze</b>, which reduces visibility. Watch the screen get hazy!");
+  } else if (t === "CO") {
+    burst(p.x, p.y, P.CO.col, 8);
+    caption("CO IN THE AIR! PSI UP", P.CO.col);
+    firstInfo("CO", "☠️ <b>Carbon monoxide</b> reached the city. It can cause poisoning. Don't let its puffs touch you!");
+  } else {
+    var s = nearestStruct(p.x);
+    var targets = Inv.structs.filter(function (x) { return x.hp > 0; });
+    if (targets.length) { s = targets.reduce(function (a, b) { return Math.abs(a.x + a.w / 2 - p.x) <= Math.abs(b.x + b.w / 2 - p.x) ? a : b; }); }
+    if (s) {
+      var top = GY - structH(s);
+      for (var i = 0; i < 16; i++) I.drops.push({ x: s.x + Math.random() * s.w, y: top - 70 - Math.random() * 40, vy: 160 + Math.random() * 60, to: top, dmg: i === 0 && s.hp > 0 ? s : null });
+      caption(s.k === "bldg" ? "ACID RAIN! BUILDING CORRODING" : s.k === "tree" ? "ACID RAIN! PLANT DYING" : "ACID RAIN! FISH DYING", "#9BF27A");
+    }
+    firstInfo("acid", "🌧️ <b>" + P[t].name + "</b> dissolved in rain to form <b>acid rain</b>. Acid rain corrodes buildings and kills plants and fish.");
+  }
+}
+
+function hitEnemy(e, ep) {
+  var I = Inv, c = I.clue; if (!c) return;
+  var cx = ep.x + EW / 2, cy = ep.y + EH / 2;
+  if (c.ans.indexOf(e.type) > -1) {
+    var first = I.tries === 0, pts = first ? 100 : 40;
+    e.alive = false; burst(cx, cy, P[e.type].col, 18); Sound.hit();
+    G.points += pts; floatT("+" + pts, cx, ep.y, "#4CF08A");
+    I.psi = Math.max(20, I.psi - 4);
+    G.log.push({ src: "wave", ok: first, cat: c.cat, ps: c.ans, err: c.err, q: "Shoot the pollutant that " + stripTags(c.t), picked: first ? P[e.type].name : I.wrongPicks.map(function (t) { return P[t].name; }).join(", "), answer: names(c.ans) });
+    fbSet("ok", "✓ " + (first ? "" : "Got it! ") + c.why);
+    if (I.enemies.some(function (x) { return x.alive; })) pickClue(); else { I.clue = null; }
+  } else {
+    e.flash = .6; I.tries++; I.wrongWave++; I.psi += 5; Sound.bad();
+    if (I.wrongPicks.indexOf(e.type) < 0) I.wrongPicks.push(e.type);
+    floatT("WRONG", cx, ep.y, "#FF4D5E");
+    if (I.tries === 1) addErr(c.err);
+    var fact = c.cat === "source" ? P[e.type].src : P[e.type].eff;
+    var hint = "";
+    if (I.tries >= 2) { var fr = frontEnemies(); I.enemies.forEach(function (x) { x.hint = fr.indexOf(x) > -1 && c.ans.indexOf(x.type) > -1; }); hint = " <b>Hint: shoot a flashing one!</b>"; }
+    fbSet("no", "✗ That's <b>" + P[e.type].name.toLowerCase() + "</b>. " + fact + hint);
+  }
+}
+
+function waveCleared() {
+  var I = Inv;
+  I.phase = "clear"; I.clearT = 2.4; I.wavesCleared++; I.clue = null; I.puffs = [];
+  I.psi = Math.max(20, I.psi - 50); I.haze *= .4; G.points += 150;
+  setClue(null);
+  $("p-clue-h").textContent = "WAVE " + (I.wave + 1) + " CLEARED!"; $("p-clue-t").innerHTML = "The air is clearing. <b>PSI −50</b> and +150 points.";
+  Sound.wave();
+}
+function missionDone() {
+  var I = Inv; I.phase = "done";
+  var lv = psiLevel(I.psi);
+  $("po-title").textContent = "CITY CLEARED!";
+  $("po-msg").innerHTML = "All 3 waves defeated. Air quality: <b>PSI " + Math.round(I.psi) + " (" + lv[0].toLowerCase() + ")</b>.<br>But the <b>" + BOSS_NAME + "</b> is rising from the chimneys…";
+  $("po-go").textContent = "FIGHT ▶"; $("pf-over").hidden = false; $("po-go").focus();
+}
+$("po-go").addEventListener("click", function () { stopGame(); startBoss(); });
+function loseMission() {
+  var I = Inv; I.phase = "over"; stopGame(); Music.fadeOut(); Sound.lose();
+  finish(true);
+  show("scr-bend");
+  $("scr-bend").className = "bend lose";
+  $("be-title").textContent = "HAZARDOUS!";
+  $("be-sprite").innerHTML = heroArt(true); $("be-sprite").className = "sprite" + (IMG_OK[HERO_HURT_IMG] ? "" : " down");
+  $("be-msg").textContent = "The PSI went above " + PSI_LOSE + ". Too much pollution reached the city. You cleared " + I.wavesCleared + " of " + WAVES.length + " waves. Try again!";
+  $("be-retry").hidden = false;
+}
+function psiLevel(v) {
+  return v <= 50 ? ["GOOD", "#4CF08A"] : v <= 100 ? ["MODERATE", "#2EF2E0"] : v <= 200 ? ["UNHEALTHY", "#FCE883"] : v < 300 ? ["V. UNHEALTHY", "#FF8243"] : ["HAZARDOUS", "#FF4D5E"];
+}
+var hudCache = "";
+function paintHud() {
+  var v = Math.round(Inv.psi), lv = psiLevel(v), key = G.points + "|" + v;
+  if (key === hudCache) return; hudCache = key;
+  $("p-score").textContent = G.points;
+  $("p-psi").textContent = v + " " + lv[0];
+  $("p-psi").style.color = lv[1];
+  $("p-psi-bar").style.width = Math.min(100, v / PSI_LOSE * 100) + "%";
+  $("p-psi-bar").style.background = lv[1];
+}
+
+/* drawing */
+function txt(s, x, y, size, col, align) {
+  CX.font = size + "px " + PIX; CX.textAlign = "left"; CX.textBaseline = "alphabetic";
+  // digits after a capital letter are drawn as subscripts (NO2, SO2)
+  var parts = [], m, re = /([A-Z])(\d)/g, last = 0;
+  while ((m = re.exec(s))) { parts.push([s.slice(last, m.index + 1), 0]); parts.push([m[2], 1]); last = m.index + 2; }
+  parts.push([s.slice(last), 0]);
+  var w = 0;
+  parts.forEach(function (p) { CX.font = (p[1] ? Math.round(size * .7) : size) + "px " + PIX; p.w = CX.measureText(p[0]).width; w += p.w; });
+  var x0 = align === "left" ? x : x - w / 2;
+  parts.forEach(function (p) {
+    CX.font = (p[1] ? Math.round(size * .7) : size) + "px " + PIX;
+    var yy = p[1] ? y + size * .3 : y;
+    CX.lineWidth = Math.max(2, size / 3); CX.strokeStyle = "#0D0B1A"; CX.lineJoin = "round"; CX.strokeText(p[0], x0, yy);
+    CX.fillStyle = col; CX.fillText(p[0], x0, yy); x0 += p.w;
+  });
+}
+function draw() {
+  var I = Inv; if (!I) return;
+  if (!CV.width) resize();
+  CX.setTransform(SX, 0, 0, SY, 0, 0); CX.imageSmoothingEnabled = false;
+  // sky
+  var g = CX.createLinearGradient(0, 0, 0, WH); g.addColorStop(0, "#0D0B1A"); g.addColorStop(.75, "#19152E"); g.addColorStop(1, "#2A2448");
+  CX.fillStyle = g; CX.fillRect(0, 0, WW, WH);
+  STARS.forEach(function (s) { CX.globalAlpha = .4 + .4 * Math.abs(Math.sin(I.anim * .8 + s.tw)); CX.fillStyle = "#FFFFFF"; CX.fillRect(s.x, s.y, s.s, s.s); });
+  CX.globalAlpha = 1;
+  drawCity();
+  // enemies
+  var fr = Math.floor(I.anim * 2) % 2;
+  I.enemies.forEach(function (e) {
+    if (!e.alive) return;
+    var p = enemyPos(e), hurt = e.flash > 0 && Math.floor(e.flash * 10) % 2 === 0;
+    CX.drawImage(SPR[e.type + (hurt ? "_hurt" : "")][fr], p.x, p.y, EW, EH);
+    if (e.hint && Math.floor(I.anim * 4) % 2 === 0) { CX.strokeStyle = "#FCE883"; CX.lineWidth = 2; CX.strokeRect(p.x - 4, p.y - 4, EW + 8, EH + 18); }
+    txt(P[e.type].label, p.x + EW / 2, p.y + EH + 11, 8, "#FFFFFF");
+    if (I.ship.target === e || I.shots.some(function (s) { return s.target === e; })) {
+      CX.fillStyle = "#2EF2E0"; var L = 6, x0 = p.x - 4, y0 = p.y - 4, x1 = p.x + EW + 4, y1 = p.y + EH + 4;
+      CX.fillRect(x0, y0, L, 2); CX.fillRect(x0, y0, 2, L); CX.fillRect(x1 - L, y0, L, 2); CX.fillRect(x1 - 2, y0, 2, L);
+      CX.fillRect(x0, y1 - 2, L, 2); CX.fillRect(x0, y1 - L, 2, L); CX.fillRect(x1 - L, y1 - 2, L, 2); CX.fillRect(x1 - 2, y1 - L, 2, L);
+    }
+  });
+  // puffs
+  I.puffs.forEach(function (p) { CX.drawImage(SPR[p.type + "_puff"], p.x - 7, p.y - 6, 14, 12); });
+  // shots
+  CX.fillStyle = "#2EF2E0"; I.shots.forEach(function (s) { CX.fillRect(s.x - 1.5, s.y - 10, 3, 10); });
+  // ship
+  var sp = I.ship.slow > 0 ? SPR.shipCO : SPR.ship;
+  if (I.phase !== "over" && !(I.ship.hitT > 0 && Math.floor(I.ship.hitT * 12) % 2)) CX.drawImage(sp[Math.floor(I.anim * 8) % 2], I.ship.x - 15, SHIP_Y - 10, 30, 20);
+  if (I.ship.slow > 0) txt("LOW O2", I.ship.x, SHIP_Y - 16, 6, P.CO.col);
+  // acid rain + particles
+  CX.fillStyle = "#9BF27A"; I.drops.forEach(function (d) { CX.fillRect(d.x, d.y, 2, 5); });
+  I.parts.forEach(function (p) { CX.globalAlpha = Math.min(1, p.life * 2); CX.fillStyle = p.col; CX.fillRect(p.x, p.y, p.s, p.s); });
+  CX.globalAlpha = 1;
+  // haze: particulate matter reduces visibility
+  if (I.haze > 0) {
+    CX.fillStyle = "rgba(190,170,135," + I.haze.toFixed(3) + ")"; CX.fillRect(0, 0, WW, WH);
+    for (var h = 0; h < 30; h++) { CX.fillStyle = "rgba(220,200,165," + (I.haze * .5).toFixed(3) + ")"; CX.fillRect((h * 53 + I.anim * 9) % WW, (h * 97) % 440, 2, 2); }
+  }
+  // texts
+  I.texts.forEach(function (x) { CX.globalAlpha = Math.min(1, x.life * 2); txt(x.t, x.x, x.y, 8, x.col); });
+  CX.globalAlpha = 1;
+  if (I.caption) { CX.globalAlpha = Math.min(1, I.caption.life * 2); CX.fillStyle = "rgba(13,11,26,.75)"; CX.fillRect(0, 386, WW, 18); txt(I.caption.t, WW / 2, 399, 7, I.caption.col); CX.globalAlpha = 1; }
+  if (I.phase === "intro") banner("WAVE " + (I.wave + 1) + "/" + WAVES.length, WAVES[I.wave].title);
+  if (I.phase === "clear") banner("WAVE CLEARED!", "PSI -50  +150 PTS");
+}
+function banner(a, b) {
+  CX.fillStyle = "rgba(13,11,26,.8)"; CX.fillRect(0, 196, WW, 66);
+  CX.fillStyle = "#2EF2E0"; CX.fillRect(0, 196, WW, 2); CX.fillRect(0, 260, WW, 2);
+  txt(a, WW / 2, 226, 16, "#FCE883"); txt(b, WW / 2, 248, 8, "#2EF2E0");
+}
+function drawCity() {
+  var I = Inv;
+  CX.fillStyle = "#1F3A33"; CX.fillRect(0, GY, WW, WH - GY);
+  CX.fillStyle = "#2EF2E0"; CX.fillRect(0, GY, WW, 1);
+  I.structs.forEach(function (s) {
+    var h = structH(s), top = GY - h;
+    if (s.k === "bldg") {
+      var cols = ["#5A5560", "#7E8A99", "#A9BCC9", "#DDF2F2"];
+      CX.fillStyle = "#0D0B1A"; CX.fillRect(s.x - 1, top - 1, s.w + 2, h + 1);
+      CX.fillStyle = cols[s.hp]; CX.fillRect(s.x, top, s.w, h);
+      if (s.hp > 0) {
+        CX.fillStyle = s.hp >= 2 ? "#FCE883" : "#3A3D45";
+        for (var wy = top + 4; wy < GY - 6; wy += 8) for (var wx = s.x + 4; wx < s.x + s.w - 5; wx += 8) CX.fillRect(wx, wy, 4, 4);
+      }
+      if (s.hp <= 2 && s.hp > 0) { CX.fillStyle = "#0D0B1A"; CX.fillRect(s.x + s.w * .3, top, 1, 6); CX.fillRect(s.x + s.w * .3 + 1, top + 6, 1, 5); CX.fillRect(s.x + s.w * .7, top + 3, 1, 7); }
+    } else if (s.k === "tree") {
+      var cx = s.x + s.w / 2;
+      CX.fillStyle = "#6B4A2B"; CX.fillRect(cx - 2, GY - 12, 4, 12);
+      if (s.hp > 0) {
+        CX.fillStyle = ["#000", "#B98A3A", "#A8C545", "#3DBB5E"][s.hp];
+        CX.fillRect(s.x + 3, top + 4, s.w - 6, 12); CX.fillRect(s.x + 6, top, s.w - 12, 18);
+      } else { CX.fillStyle = "#6B4A2B"; CX.fillRect(cx - 7, GY - 16, 6, 2); CX.fillRect(cx + 1, GY - 19, 6, 2); }
+    } else {
+      CX.fillStyle = ["#6E7A4A", "#5E8C6A", "#3C8F9E", "#2E86DE"][s.hp]; CX.fillRect(s.x, GY - 6, s.w, 6);
+      CX.fillStyle = "#0D0B1A"; CX.fillRect(s.x, GY - 7, s.w, 1);
+      for (var f = 0; f < s.hp; f++) { var fx2 = s.x + 10 + ((I.anim * 14 + f * 23) % (s.w - 20)); CX.fillStyle = "#FF8243"; CX.fillRect(fx2, GY - 4, 4, 2); CX.fillRect(fx2 - 2, GY - 5, 2, 4); }
+      if (s.hp === 0) { CX.fillStyle = "#A3A7B2"; CX.fillRect(s.x + s.w / 2, GY - 4, 5, 2); }
+    }
+  });
+}
+
+/* input */
+function toWorld(e) { var r = CV.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * WW, y: (e.clientY - r.top) / r.height * WH }; }
+var dragging = false;
+CV.addEventListener("pointerdown", function (e) {
+  if (!Inv || Inv.phase === "over" || Inv.phase === "done") return;
+  e.preventDefault(); dragging = true;
+  try { CV.setPointerCapture(e.pointerId); } catch (x) {}
+  var p = toWorld(e), s = Inv.ship, best = null, bd = 34;
+  if (Inv.phase === "play") Inv.enemies.forEach(function (en) {
+    if (!en.alive) return;
+    var q = enemyPos(en), d = Math.hypot(p.x - (q.x + EW / 2), p.y - (q.y + EH / 2 + 4));
+    if (d < bd) { bd = d; best = en; }
+  });
+  s.target = best; s.tx = clampX(best ? enemyPos(best).x + EW / 2 : p.x); s.fire = true;
+});
+CV.addEventListener("pointermove", function (e) { if (dragging && Inv && !Inv.ship.target) Inv.ship.tx = clampX(toWorld(e).x); });
+CV.addEventListener("pointerup", function () { dragging = false; });
+CV.addEventListener("pointercancel", function () { dragging = false; });
+document.addEventListener("keydown", function (e) {
+  if (!Inv || $("scr-play").hidden) return;
+  var k = e.key;
+  if (k === "ArrowLeft" || k === "a" || k === "A") { Inv.keys.L = true; e.preventDefault(); }
+  else if (k === "ArrowRight" || k === "d" || k === "D") { Inv.keys.R = true; e.preventDefault(); }
+  else if (k === " " || k === "ArrowUp" || k === "w" || k === "W") { e.preventDefault(); if (!e.repeat) { Inv.ship.fire = false; Inv.ship.target = null; shoot(); } }
+});
+document.addEventListener("keyup", function (e) {
+  if (!Inv) return;
+  if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") Inv.keys.L = false;
+  if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") Inv.keys.R = false;
+});
+document.addEventListener("visibilitychange", function () {
+  if (Inv) { Inv.paused = document.hidden; lastT = performance.now(); }
+  if (document.hidden) Music.el.pause(); else if (Music.inGame()) Music.play();
+});
+
+/* =================== BOSS FIGHT =================== */
+var raf = 0;
+function heartSVG() { return pixelSVG(HEART_MAP, HEART_PAL); }
+function startBoss() {
+  B = { hp: HITS_TO_WIN, maxhp: HITS_TO_WIN, hearts: HEARTS, max: HEARTS, n: 0, correct: 0, phase2: false, combo: 0, bestCombo: 0,
+        poolT: shuffle(BOSS_Q.filter(function (q) { return q.cat !== "reduce"; })), poolR: shuffle(BOSS_Q.filter(function (q) { return q.cat === "reduce"; })) };
+  show("scr-boss"); Music.stop(); Music.use("boss");
+  $("b-hero").className = "sprite hero-sp"; $("b-mon").className = "sprite mon-sp";
+  clearTimeout(hurtTimers["b-hero"]); clearTimeout(hurtTimers["b-mon"]); paintSprites();
+  paintBossHud(); nextQ();
+}
+function paintBossHud(breakIdx) {
+  var h = "";
+  for (var i = 0; i < B.max; i++) h += '<span class="' + (i >= B.hearts ? "lost" : "") + (i === breakIdx ? " breaking" : "") + '">' + heartSVG() + "</span>";
+  $("b-hearts").innerHTML = h;
+  var p = Math.max(0, B.hp) / B.maxhp * 100;
+  $("b-left").textContent = "· " + Math.max(0, B.hp) + (B.hp === 1 ? " HIT" : " HITS") + " LEFT";
+  $("b-hp").style.width = p + "%";
+  $("b-hp").className = p <= 30 ? "low" : "";
+}
+var CAT_NAME = { source: "SOURCES", effect: "EFFECTS", risk: "WHO IS AT RISK", reduce: "REDUCING POLLUTION" };
+function nextQ() {
+  if (B.hp <= 0 || B.hearts <= 0) return bossEnd();
+  $("b-fb").hidden = true; $("b-bolt").classList.remove("fly");
+  var hi = $("b-hero").querySelector("img"); if (hi && IMG_OK[HERO_IMG]) hi.src = HERO_IMG;
+  var useR = Math.random() < (B.phase2 ? .5 : .3);
+  if (!B.poolT.length) B.poolT = shuffle(BOSS_Q.filter(function (q) { return q.cat !== "reduce"; }));
+  if (!B.poolR.length) B.poolR = shuffle(BOSS_Q.filter(function (q) { return q.cat === "reduce"; }));
+  var item = (useR ? B.poolR : B.poolT).shift();
+  B.q = { item: item, opts: shuffle(item.a.map(function (t, i) { return { text: t, ok: i === 0 }; })) };
+  B.n++;
+  $("b-qtype").textContent = (B.phase2 ? "PHASE 2 · " : "") + "ATTACK " + B.n + " · " + CAT_NAME[item.cat];
+  $("b-qtext").innerHTML = fx(item.q);
+  $("b-opts").innerHTML = B.q.opts.map(function (o, i) { return '<button type="button" class="qopt" data-i="' + i + '"><span class="k">' + "ABCD"[i] + '</span><span class="tx">' + fx(o.text) + "</span></button>"; }).join("");
+  B.t0 = performance.now(); B.secs = BOSS_SECS; B.locked = false;
+  $("b-charge-lbl").textContent = BOSS_NAME + " IS CHARGING";
+  tick();
+}
+function tick() {
+  var el = (performance.now() - B.t0) / 1000, left = Math.max(0, B.secs - el);
+  $("b-cbar").style.width = Math.min(100, el / B.secs * 100) + "%";
+  $("b-secs").textContent = Math.ceil(left);
+  $("b-charge").classList.toggle("warn", left <= 8);
+  if (left <= 0) { answer(-1); return; }
+  raf = requestAnimationFrame(tick);
+}
+function stopBossTimer() { cancelAnimationFrame(raf); }
+$("b-opts").addEventListener("click", function (e) { var b = e.target.closest(".qopt"); if (b && !B.locked) answer(+b.dataset.i); });
+function floatText(t, onBoss, hurt) {
+  var s = document.createElement("span"); s.className = "dmg" + (hurt ? " hurt" : ""); s.textContent = t;
+  s.style[onBoss ? "right" : "left"] = onBoss ? "12%" : "8%"; s.style.top = "30%";
+  $("b-stage").appendChild(s); setTimeout(function () { s.remove(); }, 1100);
+}
+function retrigger(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+function answer(i) {
+  B.locked = true; stopBossTimer();
+  var q = B.q, item = q.item, el = (performance.now() - B.t0) / 1000, o = i >= 0 ? q.opts[i] : null, ok = !!(o && o.ok), msg;
+  var btns = $("b-opts").querySelectorAll(".qopt");
+  q.opts.forEach(function (op, j) { btns[j].disabled = true; if (op.ok) btns[j].classList.add("right"); });
+  if (o && !ok) btns[i].classList.add("wrong");
+  if (ok) {
+    B.correct++; B.combo++; B.bestCombo = Math.max(B.bestCombo, B.combo);
+    var crit = el <= CRIT_SECS;
+    B.hp = Math.max(0, B.hp - 1);
+    G.points += (crit ? 150 : 100) + Math.round(Math.max(0, B.secs - el)) * 5;
+    retrigger($("b-hero"), "atk"); retrigger($("b-bolt"), "fly");
+    setTimeout(function () { showHurt("b-mon", BOSS_HURT_IMG); retrigger($("b-mon"), "hit"); floatText(crit ? "CRITICAL!" : "HIT!", true); Sound.hit(); paintBossHud(); }, 380);
+    msg = '<span class="ans">' + (crit ? "Critical hit! Speed bonus." : "Direct hit!") + "</span> " + (B.hp > 0 ? B.hp + " more to go. " : "") + fx(item.why);
+  } else {
+    B.combo = 0; B.hearts--;
+    retrigger($("b-mon"), "atk");
+    setTimeout(function () { showHurt("b-hero", HERO_HURT_IMG); retrigger($("b-hero"), "hit"); retrigger($("b-flash"), "on"); floatText("-1 ♥", false, true); Sound.hurt(); paintBossHud(B.hearts); }, 300);
+    addErr(item.err); if (!o) addErr("timeout");
+    msg = (o ? "" : BOSS_NAME + " struck first. You ran out of time. ") + fx(item.why) + '<br><span class="ans">Answer: ' + fx(item.a[0]) + "</span>";
+  }
+  G.log.push({ src: "boss", ok: ok, cat: item.cat, ps: item.ps, err: item.err, q: item.q, picked: o ? o.text : "(ran out of time)", answer: item.a[0] });
+  if (!B.phase2 && B.hp > 0 && B.hp <= B.maxhp / 2) {
+    B.phase2 = true;
+    setTimeout(function () { var p = document.createElement("div"); p.className = "phase"; p.textContent = BOSS_NAME + " IS ANGRY!"; $("b-stage").appendChild(p); setTimeout(function () { p.remove(); }, 2200); }, 700);
+  }
+  var over = B.hp <= 0 || B.hearts <= 0;
+  $("b-fb").hidden = false; $("b-fb").className = "qfb" + (ok ? "" : " no");
+  $("b-fb-msg").innerHTML = msg;
+  $("b-next").textContent = over ? (B.hp <= 0 ? "FINISH HIM ▶" : "CONTINUE ▶") : "NEXT ATTACK ▶";
+  if (window.matchMedia("(max-width: 759px)").matches) setTimeout(function () { $("b-fb").scrollIntoView({ behavior: "smooth", block: "nearest" }); }, 200);
+}
+$("b-next").addEventListener("click", function () { if (B.hp <= 0 || B.hearts <= 0) bossEnd(); else nextQ(); });
+function bossEnd() {
+  stopBossTimer(); Music.fadeOut();
+  var win = B.hp <= 0; B.win = win;
+  if (win) $("b-mon").classList.add("dead"); else $("b-hero").classList.add("dead");
+  finish(true); // log this attempt now, so retries are recorded too
+  setTimeout(function () {
+    show("scr-bend");
+    $("scr-bend").className = "bend" + (win ? "" : " lose");
+    $("be-title").textContent = win ? "VICTORY!" : "YOU DIED";
+    $("be-sprite").innerHTML = heroArt(!win);
+    $("be-sprite").className = "sprite" + (win || IMG_OK[HERO_HURT_IMG] ? "" : " down");
+    $("be-msg").textContent = win ? "The " + BOSS_NAME + " has been blown away. The air is clean again! " + B.correct + " hits in " + B.n + " attacks." :
+      "The " + BOSS_NAME + " knocked you out. You landed " + B.correct + " of " + B.maxhp + " hits. Try again!";
+    $("be-retry").hidden = win;
+    if (win) { Sound.win(); Confetti.go(); } else Sound.lose();
+  }, win ? 700 : 500);
+}
+$("be-go").addEventListener("click", function () { Confetti.stop(); show("scr-result"); });
+$("be-retry").addEventListener("click", function () {
+  var st = G.student;
+  if (G.mode === "mission" && !B) startMission(st); else { newSession(st, "boss"); startBoss(); }
+});
+
+/* =================== RESULTS =================== */
+function finish(silent) {
+  var secs = (Date.now() - G.t0) / 1000, L = G.log, S = { secs: secs };
+  if (!silent) show("scr-result");
+  S.correct = L.filter(function (x) { return x.ok; }).length; S.total = L.length;
+  var bars = [];
+  ORDER.forEach(function (t) {
+    var e = L.filter(function (x) { return x.ps.indexOf(t) > -1; });
+    if (e.length) bars.push([P[t].name, e.filter(function (x) { return x.ok; }).length, e.length]);
+  });
+  [["Sources", ["source"]], ["Effects", ["effect", "risk"]], ["Reducing pollution", ["reduce"]]].forEach(function (g) {
+    var e = L.filter(function (x) { return g[1].indexOf(x.cat) > -1; });
+    if (e.length) bars.push([g[0], e.filter(function (x) { return x.ok; }).length, e.length]);
+  });
+  S.bars = bars;
+  var pct = S.total ? Math.round(S.correct / S.total * 100) : 0; S.pct = pct;
+  $("res-ring").style.setProperty("--p", pct); $("res-pct").textContent = pct + "%";
+  var title, sub;
+  if (G.mode === "mission") {
+    var waves = Inv ? Inv.wavesCleared : 0;
+    if (B && B.win) { title = "Clean air champion!"; sub = "All " + WAVES.length + " waves cleared and the " + BOSS_NAME + " defeated."; }
+    else if (B) { title = "So close!"; sub = "All " + WAVES.length + " waves cleared, but the " + BOSS_NAME + " survived."; }
+    else { title = "The air turned hazardous"; sub = "You cleared " + waves + " of " + WAVES.length + " waves."; }
+    sub += " " + S.correct + " of " + S.total + " right on the first try.";
+  } else {
+    title = B.win ? BOSS_NAME + " defeated!" : BOSS_NAME + " survived";
+    sub = B.correct + " hits from " + B.n + " attacks (" + B.maxhp + " needed to win). Best combo " + B.bestCombo + ".";
+  }
+  $("res-title").textContent = title; $("res-sub").textContent = sub;
+  $("res-correct").textContent = S.correct + "/" + S.total;
+  $("res-acc").textContent = pct + "%";
+  $("res-time").textContent = fmtTime(secs);
+  $("res-points").textContent = G.points;
+  $("res-bars").innerHTML = bars.map(function (b) {
+    var p = b[2] ? Math.round(b[1] / b[2] * 100) : 0;
+    return '<div class="bar-row"><span>' + esc(b[0]) + '</span><div class="bar"><i class="' + (p < 60 ? "low" : "") + '" style="width:' + p + '%"></i></div><span class="n">' + b[1] + "/" + b[2] + "</span></div>";
+  }).join("");
+  var errs = Object.keys(G.err).sort(function (a, b) { return G.err[b] - G.err[a]; });
+  S.errs = errs;
+  $("res-weak").innerHTML = errs.length ? errs.slice(0, 3).map(function (k) { return "<li><b>" + esc(ERR[k].label) + " ×" + G.err[k] + "</b><span>" + esc(ERR[k].tip) + "</span></li>"; }).join("") :
+    '<li class="good"><b>No mistakes!</b><span>Every answer was right on the first try.</span></li>';
+  var wrong = L.filter(function (x) { return !x.ok; });
+  $("res-review").innerHTML = wrong.length ? wrong.slice(0, 8).map(function (x) {
+    return "<li>" + fx(x.q) + '<br><span class="you">You picked: ' + fx(x.picked) + '</span><br><span class="key">Answer: ' + fx(x.answer) + "</span></li>";
+  }).join("") : "<li>Nothing to review. Every one was right first time.</li>";
+  var best = load("best", {}), bk = G.mode;
+  if (best[bk] == null || G.points > best[bk]) { best[bk] = G.points; store("best", best); }
+  $("btn-toboss").hidden = G.mode === "boss";
+  sendResults(S);
+}
+function buildPayload(S) {
+  var modeName = G.mode === "mission" ? "Mission" : "Boss fight";
+  var status = G.mode === "mission"
+    ? "Waves cleared: " + (Inv ? Inv.wavesCleared : 0) + "/" + WAVES.length + " | Final PSI: " + (Inv ? Math.round(Inv.psi) : "-") + " | Boss: " + (B ? (B.win ? "won" : "lost") : "not reached")
+    : "Boss: " + (B.win ? "won" : "lost") + " | Best combo: " + B.bestCombo;
+  var bars = S.bars.map(function (b) { return b[0] + " " + b[1] + "/" + b[2]; }).join(", ");
+  var errs = S.errs.length ? S.errs.map(function (k) { return ERR[k].label + " x" + G.err[k]; }).join("; ") : "none";
+  var wrong = G.log.filter(function (x) { return !x.ok; }).map(function (x) {
+    return (x.src === "wave" ? "[wave] " : "[boss] ") + x.q.replace("Shoot the pollutant that ", "") + " → picked " + x.picked;
+  }).join(" | ");
+  return {
+    course: SHEET_TAB, chapter: "Air pollutants · " + modeName,
+    name: G.student.name, cls: G.student.cls, reg: G.student.reg,
+    score: S.correct, total: S.total, wrong: wrong || "None",
+    time: Math.round(S.secs), points: G.points,
+    summary: "Mode: " + modeName + " | " + status + " | " + bars + " | Errors: " + errs
+  };
+}
+function post(payload) { return fetch(SUBMIT_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) }); }
+function sendResults(S) {
+  var payload = G.payload = buildPayload(S), box = $("send"), msg = $("send-msg"), btn = $("btn-resend");
+  box.className = "send span"; btn.hidden = true;
+  if (!SUBMIT_URL) { msg.textContent = "Results not sent (no Google Sheet link set up)."; return; }
+  msg.textContent = "Sending your results to Ms Khoo…";
+  post(payload).then(function () { msg.textContent = "✓ Sent! Ms Khoo has your results."; })
+    .catch(function () { box.className = "send span err"; msg.textContent = "Couldn't send. Check your internet, then tap Try again."; btn.hidden = false; });
+}
+$("btn-resend").addEventListener("click", function () {
+  var box = $("send"); $("btn-resend").hidden = true; $("send-msg").textContent = "Sending…";
+  post(G.payload).then(function () { box.className = "send span"; $("send-msg").textContent = "✓ Sent! Ms Khoo has your results."; })
+    .catch(function () { $("send-msg").textContent = "Still couldn't send. Try again when you're online."; $("btn-resend").hidden = false; });
+});
+$("btn-again").addEventListener("click", function () { Confetti.stop(); var st = G.student; if (G.mode === "mission") startMission(st); else { newSession(st, "boss"); startBoss(); } });
+$("btn-toboss").addEventListener("click", function () { Confetti.stop(); newSession(G.student, "boss"); startBoss(); });
+$("btn-home").addEventListener("click", function () { Confetti.stop(); show("scr-start"); paintStart(); });
+
+if (location.hash === "#debug") window.__SI = { Inv: function () { return Inv; }, B: function () { return B; }, G: function () { return G; } };
+
+/* =================== CONFETTI =================== */
+var Confetti = {
+  c: $("confetti"), p: [], on: false,
+  go: function () {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var c = this.c, w = c.width = innerWidth, h = c.height = innerHeight, cols = ["#FF8243", "#FFC0CB", "#FCE883", "#069494", "#1F2A2E"];
+    c.hidden = false; this.on = true; this.p = [];
+    for (var i = 0; i < 110; i++) this.p.push({ x: Math.random() * w, y: -Math.random() * h, s: 6 + Math.random() * 8, v: 2 + Math.random() * 3, a: Math.random() * 6, col: cols[i % cols.length] });
+    var self = this, ctx = c.getContext("2d"), t0 = performance.now();
+    (function frame(t) {
+      if (!self.on) return;
+      ctx.clearRect(0, 0, w, h);
+      self.p.forEach(function (p) { p.y += p.v; p.a += .1; ctx.fillStyle = p.col; ctx.fillRect(p.x + Math.sin(p.a) * 6, p.y, p.s, p.s * .6); });
+      if (t - t0 < 4000) requestAnimationFrame(frame); else self.stop();
+    })(t0);
+  },
+  stop: function () { this.on = false; this.c.hidden = true; }
+};
+
+})();
+</script>
+</body>
+</html>
